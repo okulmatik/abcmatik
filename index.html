@@ -5,10 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>1. Sınıf Hızlı Okuma Asistanı</title>
     
-    <!-- ÇEVRİMİÇİ CDN BAĞLANTILARI -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
@@ -27,21 +26,20 @@
             -webkit-user-select: none;
             -webkit-user-drag: none;
             cursor: default;
-            overflow: hidden;
         }
 
         .temel-yazi-font { font-family: 'TemelYazi', sans-serif; font-weight: normal; }
-        .no-drag { -webkit-user-drag: none; user-drag: none; }
         .text-balance { text-wrap: balance; }
 
         @keyframes popUpIn { 0% { transform: scale(0.8); opacity: 0; } 100% { transform: scale(1); opacity: 1; } }
         .animate-pop-up { animation: popUpIn 0.4s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
-        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-10px); } 75% { transform: translateX(10px); } }
+        @keyframes shake { 0%, 100% { transform: translateX(0); } 25% { transform: translateX(-6px); } 75% { transform: translateX(6px); } }
         .animate-shake { animation: shake 0.3s ease-in-out; }
-        @keyframes popRotate { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.2) rotate(10deg); opacity: 1; } 80% { transform: scale(0.9) rotate(-5deg); } 100% { transform: scale(1) rotate(0deg); } }
+        @keyframes popRotate { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.1) rotate(10deg); opacity: 1; } 100% { transform: scale(1) rotate(0deg); } }
         .animate-pop-rotate { animation: popRotate 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
 
-        input[type=range].horizontal-slider { accent-color: #FF8C42; height: 20px; width: 100%; cursor: pointer; }
+        input[type=range].horizontal-slider { accent-color: #FF8C42; height: 16px; cursor: pointer; }
+
         input[type=range].vertical-slider {
             writing-mode: bt-lr; 
             -webkit-appearance: slider-vertical; 
@@ -51,7 +49,6 @@
             cursor: pointer;
         }
 
-        /* YAZDIRMA İÇİN KESİN ÇÖZÜM (A4 TAM SAYFA) */
         @media print {
             @page { size: A4 portrait; margin: 0; }
             html, body { 
@@ -62,7 +59,6 @@
                 height: 297mm !important;
                 margin: 0 !important;
                 padding: 0 !important;
-                overflow: visible !important;
             }
             .print-hide { display: none !important; }
             .print-show { 
@@ -76,56 +72,30 @@
         }
     </style>
 </head>
-<body oncontextmenu="return false;" ondragstart="return false;" class="h-screen w-screen overflow-hidden relative">
+<body oncontextmenu="return false;" ondragstart="return false;" class="h-[100dvh] w-screen overflow-hidden relative">
 
     <div id="root" class="h-full w-full"></div>
 
     <script type="text/babel">
-        const CONTACT_INFO = "0555 555 55 55"; 
-        
-        const STORAGE_KEY_EXPIRY = "okulmatik_secure_exp_v2";
-        const STORAGE_KEY_LAST_RUN = "okulmatik_last_run";
-        const STORAGE_KEY_PUZZLE_INDEX = "okulmatik_puzzle_idx_v2"; 
-        const STORAGE_KEY_STORY_INDEX = "okulmatik_story_idx_v2";
-        const STORAGE_KEY_PYRAMID_INDEX = "okulmatik_pyramid_idx_v3";
-        const STORAGE_KEY_SYLLABLE_INDEX = "okulmatik_syllable_idx_v1";
-
-        const encrypt = (text) => { try { return btoa(text); } catch (e) { return ""; } };
-        const decrypt = (text) => { try { if (!text) return null; return atob(text); } catch(e) { return null; } };
-
-        const BANNED_WORDS = ["bok", "kaka", "popo", "salak", "aptal", "mal", "gerizekalı", "öldü", "öldürdü", "kan", "silah", "bomba", "öptü", "öpüşmek", "çıplak", "soyundu", "işedi", "sıçtı", "içki", "alkol", "sigara", "bira", "rakı", "sarhoş", "kumar", "meme", "bacak", "kalça", "yala", "em", "daya", "sok", "oy", "parti", "cehennem", "şeytan", "cin", "ilaç", "hap", "iğne", "şurup", "doktor", "hemşire", "hasta", "yaralı", "sik", "am", "yarrak", "kaşar"];
-
         const Icons = {
-            Play: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>,
-            Pause: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>,
-            Refresh: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>,
-            Home: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>,
-            Eye: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
-            Type: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>,
-            Align: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>,
-            Puzzle: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>,
-            Power: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>,
-            Maximize: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>,
-            Minimize: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>,
-            Syllable: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 4v16M17 4v16M3 8h4M3 16h4M17 8h4M17 16h4M7 12h10"></path></svg>,
-            Check: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>,
-            Printer: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>,
-            Book: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>,
-            Alert: ({ size = 64 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
-            Lock: ({ size = 64 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
+            Play: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>,
+            Pause: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>,
+            Refresh: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M21 2v6h-6"></path><path d="M3 12a9 9 0 0 1 15-6.7L21 8"></path><path d="M3 22v-6h6"></path><path d="M21 12a9 9 0 0 1-15 6.7L3 16"></path></svg>,
+            Home: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>,
+            Eye: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z"></path><circle cx="12" cy="12" r="3"></circle></svg>,
+            Type: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>,
+            Align: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>,
+            Puzzle: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>,
+            Maximize: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>,
+            Minimize: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>,
+            Syllable: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 4v16M17 4v16M3 8h4M3 16h4M17 8h4M17 16h4M7 12h10"></path></svg>,
+            Printer: ({ size = 28 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>,
+            Book: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
         };
 
         const PYRAMID_CONTENT = [
             { s: "Ali", v: "açtı", o: "kitabı", a: "kalın" }, { s: "Ece", v: "yazdı", o: "yazıyı", a: "güzel" }, { s: "Can", v: "çizdi", o: "resmi", a: "renkli" }, { s: "Mert", v: "sildi", o: "tahtayı", a: "temiz" }, { s: "Ela", v: "okudu", o: "masalı", a: "uzun" }, { s: "Nil", v: "açtı", o: "defteri", a: "kareli" }, { s: "Emre", v: "buldu", o: "kalemi", a: "kırmızı" }, { s: "Ada", v: "kesti", o: "kağıdı", a: "beyaz" }, { s: "Cem", v: "astı", o: "panoyu", a: "büyük" }, { s: "Oya", v: "tuttu", o: "cetveli", a: "sarı" },
-            { s: "Annem", v: "yaptı", o: "keki", a: "tatlı" }, { s: "Babam", v: "yıkadı", o: "arabayı", a: "kirli" }, { s: "Dedem", v: "taktı", o: "gözlüğü", a: "yeni" }, { s: "Ninem", v: "ördü", o: "atkıyı", a: "yünlü" }, { s: "Ablam", v: "sildi", o: "camı", a: "tozlu" }, { s: "Abim", v: "topladı", o: "odayı", a: "dağınık" }, { s: "Teyzem", v: "pişirdi", o: "böreği", a: "sıcak" }, { s: "Dayım", v: "tamir etti", o: "kapıyı", a: "eski" }, { s: "Halam", v: "demledi", o: "çayı", a: "taze" }, { s: "Kardeşim", v: "içti", o: "sütü", a: "ılık" },
-            { s: "Güneş", v: "ısıttı", o: "yeri", a: "soğuk" }, { s: "Yağmur", v: "ıslattı", o: "yolu", a: "kuru" }, { s: "Rüzgar", v: "salladı", o: "ağacı", a: "büyük" }, { s: "Kar", v: "kapladı", o: "dağı", a: "yüce" }, { s: "Bulut", v: "örttü", o: "göğü", a: "mavi" }, { s: "Ay", v: "aydınlattı", o: "geceyi", a: "karanlık" }, { s: "Dere", v: "aktı", o: "vadiye", a: "derin" }, { s: "Deniz", v: "vurdu", o: "kıyıya", a: "kumlu" }, { s: "Çiçek", v: "açtı", o: "bahçede", a: "renkli" }, { s: "Yaprak", v: "düştü", o: "yere", a: "sarı" },
-            { s: "Kedi", v: "kovaladı", o: "fareyi", a: "küçük" }, { s: "Köpek", v: "kemirdi", o: "kemiği", a: "sert" }, { s: "Kuş", v: "kondu", o: "dala", a: "ince" }, { s: "Arı", v: "yaptı", o: "balı", a: "tatlı" }, { s: "Tavşan", v: "yedi", o: "havucu", a: "turuncu" }, { s: "İnek", v: "verdi", o: "sütü", a: "beyaz" }, { s: "At", v: "koştu", o: "çayıra", a: "yeşil" }, { s: "Balık", v: "yüzdü", o: "suda", a: "serin" }, { s: "Kuzu", v: "aradı", o: "annesini", a: "güzel" }, { s: "Horoz", v: "öttü", o: "sabah", a: "erken" },
-            { s: "Can", v: "yedi", o: "elmayı", a: "kırmızı" }, { s: "Efe", v: "içti", o: "ayranı", a: "köpüklü" }, { s: "Selin", v: "aldı", o: "simidi", a: "susamlı" }, { s: "Mert", v: "soydu", o: "muz", a: "sarı" }, { s: "Ayşe", v: "yedi", o: "narı", a: "tane" }, { s: "Emre", v: "içti", o: "çorbayı", a: "sıcak" }, { s: "Nil", v: "böldü", o: "ekmeği", a: "taze" }, { s: "Ada", v: "yıkadı", o: "erikleri", a: "mor" }, { s: "Cem", v: "yedi", o: "karpuzu", a: "sulu" }, { s: "Oya", v: "içti", o: "suyu", a: "soğuk" },
-            { s: "Ali", v: "giydi", o: "montu", a: "kalın" }, { s: "Veli", v: "çıkardı", o: "bereyi", a: "mavi" }, { s: "Ayşe", v: "taktı", o: "atkıyı", a: "uzun" }, { s: "Mert", v: "bağladı", o: "ayakkabıyı", a: "yeni" }, { s: "Ece", v: "katladı", o: "hırkayı", a: "temiz" }, { s: "Selin", v: "ütüledi", o: "gömleği", a: "beyaz" }, { s: "Babam", v: "giydi", o: "ceketi", a: "siyah" }, { s: "Annem", v: "aldı", o: "çantayı", a: "deri" }, { s: "Emre", v: "giydi", o: "terliği", a: "rahat" }, { s: "Nil", v: "taktı", o: "tokayı", a: "süslü" },
-            { s: "Efe", v: "attı", o: "topu", a: "yuvarlak" }, { s: "Mert", v: "sürdü", o: "bisikleti", a: "hızlı" }, { s: "Ali", v: "uçurdu", o: "uçurtmayı", a: "büyük" }, { s: "Can", v: "şişirdi", o: "balonu", a: "mavi" }, { s: "Emre", v: "kazandı", o: "yarışı", a: "zorlu" }, { s: "Ayşe", v: "oynadı", o: "evcilik", a: "güzel" }, { s: "Selin", v: "atladı", o: "ipi", a: "uzun" }, { s: "Cem", v: "sakladı", o: "oyuncağı", a: "küçük" }, { s: "Ada", v: "yaptı", o: "kaleyi", a: "kumdan" }, { s: "Nil", v: "bindi", o: "salıncağa", a: "boş" },
-            { s: "Aslan", v: "gezdi", o: "ormanda", a: "geniş" }, { s: "Fil", v: "içti", o: "suyu", a: "hortumla" }, { s: "Maymun", v: "yedi", o: "muzu", a: "sarı" }, { s: "Zürafa", v: "yedi", o: "yaprağı", a: "yeşil" }, { s: "Ayı", v: "uyudu", o: "inde", a: "karanlık" }, { s: "Sincap", v: "topladı", o: "cevizi", a: "sert" }, { s: "Kirpi", v: "gezdi", o: "bahçede", a: "arka" }, { s: "Leylek", v: "yaptı", o: "yuvayı", a: "yüksek" }, { s: "Kartal", v: "uçtu", o: "dağa", a: "yüksek" }, { s: "Yunus", v: "yüzdü", o: "denizde", a: "derin" },
-            { s: "Çiftçi", v: "sürdü", o: "tarlayı", a: "verimli" }, { s: "Doktor", v: "muayene etti", o: "hastayı", a: "yaşlı" }, { s: "Polis", v: "yönetti", o: "trafiği", a: "yoğun" }, { s: "Fırıncı", v: "pişirdi", o: "ekmeği", a: "sıcak" }, { s: "Terzi", v: "dikti", o: "elbiseyi", a: "yeni" }, { s: "Berber", v: "kesti", o: "saçı", a: "uzun" }, { s: "Pilot", v: "uçurdu", o: "uçağı", a: "büyük" }, { s: "Kaptan", v: "sürdü", o: "gemiyi", a: "beyaz" }, { s: "Ressam", v: "boyadı", o: "tuvali", a: "boş" }, { s: "Yazar", v: "yazdı", o: "kitabı", a: "kalın" },
-            { s: "Gemi", v: "yanaştı", o: "limana", a: "sessiz" }, { s: "Tren", v: "girdi", o: "tünele", a: "karanlık" }, { s: "Uçak", v: "yükseldi", o: "buluta", a: "beyaz" }, { s: "Otobüs", v: "durdu", o: "durakta", a: "kalabalık" }, { s: "Saat", v: "gösterdi", o: "vakti", a: "tam" }, { s: "Telefon", v: "çaldı", o: "evde", a: "yüksek" }, { s: "Lamba", v: "aydınlattı", o: "salonu", a: "geniş" }, { s: "Çanta", v: "taşıdı", o: "kitapları", a: "ağır" }, { s: "Gözlük", v: "gösterdi", o: "yazıyı", a: "net" }, { s: "Bayrak", v: "dalgalandı", o: "gökte", a: "mavi" }
+            { s: "Annem", v: "yaptı", o: "keki", a: "tatlı" }, { s: "Babam", v: "yıkadı", o: "arabayı", a: "kirli" }, { s: "Dedem", v: "taktı", o: "gözlüğü", a: "yeni" }, { s: "Ninem", v: "ördü", o: "atkıyı", a: "yünlü" }, { s: "Ablam", v: "sildi", o: "camı", a: "tozlu" }, { s: "Abim", v: "topladı", o: "odayı", a: "dağınık" }, { s: "Teyzem", v: "pişirdi", o: "böreği", a: "sıcak" }, { s: "Dayım", v: "tamir etti", o: "kapıyı", a: "eski" }, { s: "Halam", v: "demledi", o: "çayı", a: "taze" }, { s: "Kardeşim", v: "içti", o: "sütü", a: "ılık" }
         ];
 
         const STORIES = [
@@ -133,127 +103,25 @@
             "Ayşe sabah neşeyle okula gitti. Çantasından renkli kalemini çıkardı. Kağıda kocaman bir ev çizdi. Yaptığı resmi öğretmenine gösterdi. Öğretmeni ona yıldız verdi.",
             "Bugün hava güneşli ve sıcak. Ağaçtaki kuşlar şarkı söylüyor. Biz ailecek parka gittik. Salıncakta neşeyle sallandık. Kaydıraktan kayıp çok eğlendik.",
             "Annem mutfakta nefis bir kek yaptı. Kek fırından çıkınca mis gibi koktu. Hepimiz sofraya oturup yedik. Eline sağlık güzel annem.",
-            "Babam işten eve geldi. Bana resimli bir kitap aldı. Kitabı hemen okumaya başladım. İçindeki resimler çok güzeldi. Okumayı çok seviyorum.",
-            "Minik kedim Pamuk uyudu. Sessizce yanına gittim. Onu yavaşça sevdim. Uyurken mırıl mırıl ses çıkardı. Rüya görüyor olmalı.",
-            "Dedem bize masal anlattı. Masalda kocaman devler vardı. Keloğlan aklını kullanarak devi yendi. Masalın sonunda çok güldük. Dedem en güzel masalları bilir.",
-            "Yaz tatilinde denize gittik. Kumsalda büyük bir kale yaptık. Dalgalar kıyıya kadar geldi. Yaptığımız kaleyi yıktı ama biz yine yaptık.",
-            "Kış geldi, hava soğudu. Lapa lapa kar yağdı. Her yer bembeyaz oldu. Bahçeye çıkıp kardan adam yaptık. Burnuna havuç taktık.",
-            "Sabah erkenden uyandım. Penceremi açıp güneşe baktım. Elimi yüzümü yıkadım. Sütümü içip kahvaltımı yaptım. Çantamı alıp okula koştum.",
-            "Bahçeye küçük bir fidan diktik. Can suyunu verdik. Güneş açtı ve onu ısıttı. Fidanımız büyüyüp ağaç olacak. Bize meyveler verecek.",
-            "Annemle pazara gittik. Kırmızı elma ve sarı armut aldık. Eve gelince meyveleri yıkadık. Tabaklara koyup afiyetle yedik. Meyveler çok sağlıklı.",
-            "Beyaz tavşan havuç sever. Kırlarda zıp zıp zıplar. Kulakları çok uzundur. Tehlike görünce çok hızlı koşar. Yuvasına saklanıp bekler.",
-            "Gece oldu, hava karardı. Gökyüzünde yıldızlar parladı. Ay dede bize gülümsedi. Artık uyku vakti geldi. Pijamalarımızı giydik.",
-            "Yatmadan önce dişlerimi fırçaladım. Yumuşak pijamamı giydim. Yatağıma yatıp gözlerimi kapattım. Güzel rüyalar gördüm. Sabah dinç uyandım.",
-            "Kırmızı bir balonum var. İpinden sıkıca tuttum. Rüzgar aniden esti. Balon elimden uçtu gitti. Gökyüzünde küçücük kaldı.",
-            "Okulda hep beraber şarkı söyledik. Sırayla şiir okuduk. Teneffüste oyun oynadık. Okulu ve arkadaşlarımı çok severim. Okumak çok güzel.",
-            "Sevimli köpeğim Boncuk havladı. Beni görünce kuyruk salladı. Topu uzağa attım. Koşup hemen getirdi. Onunla oynamak çok eğlenceli.",
-            "Dışarıda şıp şıp yağmur yağdı. Renkli şemsiyemi açtım. Su birikintisine bastım. Ayakkabım biraz ıslandı. Yağmurda yürümeyi severim.",
-            "Küçük arı vız vız uçtu. Sarı çiçeğe kondu. Çiçekten bal yaptı. Bal çok tatlı ve şifalıdır. Arılar çok çalışkandır.",
-            "Trafik ışığı kırmızı yandı. Arabalar hemen durdu. Yayalara yeşil yandı. Annemle karşıya geçtik. Trafik kurallarına uymalıyız.",
-            "Kırmızı itfaiye arabası geldi. Yüksek sesle sirenleri çaldı. İtfaiyeciler hortumla yangını söndürdü. Herkes onları alkışladı. Onlar kahramandır.",
-            "Manavdan taze sebze aldık. Ispanak, pırasa ve havuç seçtik. Sebzeler çok yararlıdır. Güçlü olmak için hepsini yemeliyiz.",
-            "Trende uzun bir yolculuk yaptık. Tren çuf çuf diye ses çıkardı. Pencereden dışarı baktım. Ağaçlar ve evler hızla geçti.",
-            "Uçak gökyüzünde kuş gibi uçar. Bulutların üstüne kadar çıkar. Aşağıdaki evler karınca gibi görünür. Yolculuk çok keyiflidir.",
-            "Büyük gemiler denizde gider. Balıklar suda neşeyle yüzer. Martılar vapurun peşinden uçar. Deniz havası çok güzeldir.",
-            "Hafta sonu ormanda yürüyüş yaptık. Derin bir nefes aldık. Kuş seslerini dinledik. Doğayı korumalıyız. Yerlere çöp atmamalıyız.",
-            "Çiftlikte benekli inekler vardı. Çiftçi sütlerini sağdı. Taze ve ılık süt içtik. Süt içmek kemiklerimizi güçlendirir.",
-            "Kütüphaneye gidince sessiz oldum. Raftan resimli bir kitap seçtim. Sayfaları yavaşça çevirdim. Okumak yeni dünyalar keşfetmektir.",
-            "Bayramda dedemlerin elini öptük. Bize harçlık ve şeker verdiler. Hepimiz çok sevindik. Bayramlar bizi birleştirir.",
-            "Duvardaki saat tik tak çalışır. Bize zamanı gösterir. Okula geç kalmamalıyız. Zamanımızı iyi kullanmalıyız.",
-            "Evdeki telefon yüksek sesle çaldı. Babam telefonu açtı. Arayan uzaktaki dayımdı. Bize selam söyledi. Sesini duymak güzeldi.",
-            "Bilgisayarda ödevimi yaptım. Merak ettiğim konuları araştırdım. Yeni ve ilginç bilgiler öğrendim. Teknoloji hayatımızı kolaylaştırır.",
-            "Yağmurdan sonra gökkuşağı çıktı. Gökyüzünde yedi renk oluştu. Çok güzel görünüyordu. Herkes gökyüzüne baktı.",
-            "Minik karınca çok çalışkan. Yuvasına durmadan yemek taşır. Yazın çalışır kışın yer. Hiç yorulmak bilmez.",
-            "Kelebekler rengarenk olur. Çiçekten çiçeğe nazikçe konar. Kanatları çok narin ve güzeldir. Onları izlemek harikadır.",
-            "Ağaçlar bize temiz hava verir. Ormanları korumalıyız. Dalını kırmamalıyız. Herkes bir fidan dikmeli.",
-            "Çöpleri her zaman kutuya atalım. Yerlere çöp atmayalım. Çevremizi temiz tutalım. Temiz bir dünya hepimizin hakkı.",
-            "Arkadaşımla parkta oyun oynadım. Oyuncağımı onunla paylaştım. Paylaşmak çok güzeldir. Birlikte oynamak daha eğlenceli.",
-            "Geçen gün biraz hasta oldum. Doktora gidip muayene oldum. İlaçlarımı içince iyileştim. Sağlığımıza dikkat etmeliyiz.",
-            "Polis amca trafiği yönetir. Bizi tehlikelerden korur. Ona her zaman güveniriz. Polisler güvenliğimiz için çalışır.",
-            "Fırıncı sabah erkenden ekmek yapar. Sıcak ekmek kokusu sokağa yayıldı. Kahvaltıda taze ekmek yedik. Çıtır çıtır çok lezzetliydi.",
-            "Terzi elbisemi özenle dikti. Kopan düğmesini taktı. Elbise tam üstüme göre oldu. Yeni kıyafetimi çok beğendim.",
-            "Berber uzayan saçımı kesti. Aynaya bakıp gülümsedim. Çok yakışıklı oldum. Saçlarımız temiz ve taralı olmalı.",
-            "Çoban koyunları çayıra götürdü. Kavalını neşeyle çaldı. Koyunlar meledi ve ot yedi. Akşam olunca ağıla döndüler.",
-            "Tavuklar kümeste gıdakladı. Taze yumurta yaptılar. Kümesten yumurtaları topladık. Kahvaltıda haşlayıp yedik.",
-            "Eşek sırtında yük taşıdı. Yokuşu yavaşça çıktı. Çok yoruldu ve terledi. Gölgede biraz dinlendi.",
-            "Leylekler sonbaharda göç etti. Sıcak ülkelere gittiler. Bahar gelince geri dönecekler. Yuvalarını tekrar yapacaklar.",
-            "Kaplumbağa evini sırtında taşır. Çok yavaş yürür. Tehlike görünce kabuğuna saklanır. Orada kendini güvende hisseder.",
-            "Zürafanın boyu çok uzundur. Ağacın en yüksek yaprağını yer. Vücudunda benekleri vardır. Çok sevimli bir hayvandır.",
-            "Filin uzun bir hortumu var. Hortumuyla su içer. Bazen hortumuyla kendine su püskürtür. Serinlemeyi çok sever.",
-            "Aslan ormanların güçlü kralıdır. Yelesi çok gürdür. Kükreyince herkes sesini duyar. Çok güçlü ve cesurdur.",
-            "Maymun daldan dala atlar. Muz yemeyi çok sever. Hareketleri çok komiktir. Bizi hep güldürür.",
-            "Sincap ormanda ceviz toplar. Ağaç kovuğuna saklar. Kışın acıkınca yer. Kuyruğu çok tüylüdür.",
-            "Kirpi dikenli bir hayvandır. Dikenleri kimseye batmaz. Kendini korumak için top gibi olur. Çok ilginçtir.",
-            "Baykuş gece uyanık olur. Gözleri karanlıkta çok iyi görür. Hu hu diye öter. Bilge bir kuş gibidir.",
-            "Yarasa karanlık mağarada yaşar. Tavana asılıp baş aşağı uyur. Gece olunca uçar ve avlanır.",
-            "Örümcek incecik ağ örer. Böcekleri ağıyla yakalar. Ağı çok sağlamdır. Çok yetenekli bir mimardır.",
-            "Sinek vızıldayarak uçar. Yemeğe konmaya çalışır. Onu el sallayarak kovalarız. Temizliğe dikkat etmeliyiz.",
-            "Sivrisinek kolumu ısırdı. Kolum biraz kaşındı. Hemen ilaç sürdüm. Pencerelere tel takmalıyız.",
-            "Karadeniz çok dalgalı olur. Yaylaları yemyeşildir. Çay ve fındık orada yetişir. Havası çok temizdir.",
-            "Ankara bizim başkentimizdir. Anıtkabir Ankara'dadır. Atatürk orada yatmaktadır. Onu saygıyla anıyoruz.",
-            "İstanbul çok kalabalık bir şehirdir. Boğaz köprüsü vardır. Vapurla denizde gezdik. Martılara simit attık.",
-            "İzmir'de ünlü saat kulesi var. Denizi ve sahili çok güzel. Orada boyoz yedik. Kordon'da yürüyüş yaptık.",
-            "Antalya yazın çok sıcak olur. Denize girip serinledik. Portakal bahçelerini gezdik. Tatil için harika bir yer.",
-            "Erzurum kışın çok soğuk olur. Lapa lapa kar yağar. Palandöken'de kayak yaptık. Cağ kebabı yedik.",
-            "Konya dümdüz bir ovadadır. Mevlana müzesi oradadır. Meşhur etli ekmek yedik. Çok lezzetliydi.",
-            "Van gölü deniz gibi büyüktür. İçinde canavar yoktur. Van kedisi çok meşhurdur. Gözleri farklı renktedir.",
-            "Trabzon'da bol bol hamsi yedik. Horon tepenleri izledik. Biz de onlara katıldık. Çok eğlendik.",
-            "Çanakkale geçilmez destanı yazıldı. Şehitlerimizi saygıyla andık. Abideyi ziyaret ettik. Duygusal anlar yaşadık.",
-            "23 Nisan çocuk bayramıdır. Okulda şiir okudum. Halk oyunları oynadık. Atatürk bu bayramı bize hediye etti.",
-            "19 Mayıs gençlik ve spor bayramıdır. Stadyumda spor yaptık. Koştuk ve eğlendik. Sağlıklı olmak için spor yapmalıyız.",
-            "29 Ekim Cumhuriyet bayramıdır. Okula bayraklar astık. Hep bir ağızdan marş söyledik. Cumhuriyet özgürlüktür.",
-            "30 Ağustos zafer bayramıdır. Askerler törende yürüdü. Onları izlerken gurur duyduk. Vatanımızı çok seviyoruz.",
-            "Öğretmenler günü geldi. Öğretmenime çiçek verdim. O bizim için çok çalışıyor. Öğretmenim hediyeye çok sevindi.",
-            "Anneler günü kutlu olsun. Annemi çok severim. O benim en değerli varlığım. Ona kocaman sarıldım.",
-            "Babalar günü geldi. Babama güzel bir hediye aldım. Ona sevgimi gösterdim. Babam evin direğidir.",
-            "Yerli malı haftası kutladık. Okula meyve ve kuruyemiş getirdik. Arkadaşlarla paylaşıp yedik. Yerli malı kullanmalıyız.",
-            "Kızılay zor zamanlarda yardım eder. İhtiyacı olanlara kan veririz. Kan vermek hayat kurtarır. İyilik yapmak güzeldir.",
-            "Yeşilay bizi zararlı şeylerden korur. Sağlıklı yaşamayı öğretir. Spor yapıp dengeli beslenmeliyiz. Sağlık en büyük hazinedir."
+            "Babam işten eve geldi. Bana resimli bir kitap aldı. Kitabı hemen okumaya başladım. İçindeki resimler çok güzeldi. Okumayı çok seviyorum."
         ];
 
         const PUZZLE_WORDS = [
             "BAL", "SÜT", "MUZ", "KUŞ", "AYI", "ÇAY", "GÜL", "TOP", "KEK", "YOL",
             "KEDİ", "FARE", "KUZU", "İNEK", "KEÇİ", "DEVE", "KUĞU", "OKUL", "SIRA", "MASA", 
-            "PANO", "DERS", "ELMA", "ERİK", "ÜZÜM", "KİVİ", "MAVİ", "SARI", "KOYU", "AÇIK", 
-            "BABA", "ANNE", "DEDE", "NİNE", "DAYI", "HALA", "AMCA", "ABLA", "PARK", "OYUN", 
-            "DANS", "SPOR", "KOŞU", "KAPI", "ÇATI", "BACA", "ODUN", "SOBA", "MONT", "ATKI", 
-            "BERE", "ETEK", "TREN", "GEMİ", "UÇAK", "SAAT", "HAVA", "DOĞA", "BOYA", "LALE",
-            "ZEBRA", "GEYİK", "TİLKİ", "PANDA", "KOALA", "TURNA", "SERÇE", "KARGA", "ŞAHİN", "HOROZ", 
-            "TAVUK", "ÖRDEK", "HİNDİ", "BALIK", "KÖPEK", "ASLAN", "YILAN", "SİNEK", "BÖCEK", "EKMEK", 
-            "SİMİT", "ÇORBA", "PİLAV", "HELVA", "REÇEL", "SALÇA", "CEVİZ", "BADEM", "ARMUT", "KAVUN", 
-            "LİMON", "ÇİLEK", "KİRAZ", "VİŞNE", "BİBER", "SOĞAN", "MARUL", "MISIR", "AYRAN", "KİTAP", 
-            "SİLGİ", "ÇANTA", "KALEM", "KAĞIT", "DOSYA", "MAKET", "PROJE", "BİLGİ", "SINIF", "NÖBET", 
-            "KAŞIK", "ÇATAL", "TABAK", "SEHPA", "YATAK", "DOLAP", "PERDE", "HALI", "KİLİM", "LAMBA", 
-            "FENER", "SAKSI", "ÇİÇEK", "BANYO", "HAVLU", "SABUN", "TARAK", "CEKET", "HIRKA", "KAZAK",
-            "TİMSAH", "KAPLAN", "ZÜRAFA", "MAYMUN", "SİNCAP", "KARTAL", "BAYKUŞ", "LEYLEK", "BÜLBÜL", "BALİNA", 
-            "CİVCİV", "PEYNİR", "ZEYTİN", "YOĞURT", "KARPUZ", "KAYISI", "LEBLEB", "MANTAR", "ŞEFTAL", "ANANAS", 
-            "DEFTER", "CETVEL", "SÖZLÜK", "BAYRAK", "BARDAK", "SÜRAHİ", "YASTIK", "YORGAN", "KOLTUK", "KANEPE", 
-            "MİNDER", "TERLİK", "GÖMLEK", "ELBİSE", "OTOBÜS", "KAMYON", "DOLMUŞ", "RÜZGAR", "YAĞMUR", "ŞİMŞEK", "YAPRAK", "TOPRAK",
-            "KELEBEK", "KARINCA", "ÇEKİRGE", "AHTAPOT", "PENGUEN", "PELİKAN", "FLAMİNGO", "PORTAKAL", "MANDALİ", "DOMATES", 
-            "PATATES", "PATLICAN", "ISPANAK", "BROKOLİ", "ÇİKOLATA", "DONDURMA", "KURABİYE", "TEBEŞİR", "KALEMLİK", "PENCERE", 
-            "MERDİVEN", "SANDALYE", "TELEFON", "BİSİKLET", "TRAKTÖR", "MİNİBÜS", "PAPATYA", "KARANFİL", "GÜVERCİN", "KESTANE"
+            "PANO", "DERS", "ELMA", "ERİK", "ÜZÜM", "KİVİ", "MAVİ", "SARI", "KOYU", "AÇIK"
         ];
 
         const SYLLABLE_WORDS = [
              {w:"KE-Dİ"}, {w:"KÖ-PEK"}, {w:"TA-VUK"}, {w:"KU-ZU"}, {w:"CİV-CİV"}, {w:"BA-LIK"}, {w:"ÖR-DEK"}, {w:"AS-LAN"}, {w:"PAN-DA"}, {w:"ZEB-RA"}, 
-             {w:"MAY-MUN"}, {w:"TİL-Kİ"}, {w:"Sİ-NEK"}, {w:"E-ŞEK"}, {w:"KE-Çİ"}, {w:"KAP-LAN"}, {w:"HO-ROZ"}, {w:"YI-LAN"}, {w:"DE-VE"}, {w:"TİM-SAH"},
-             {w:"OR-MAN"}, {w:"Çİ-MEN"}, {w:"Çİ-ÇEK"}, {w:"DE-NİZ"}, {w:"GÖL-GE"}, {w:"BU-LUT"}, {w:"YAĞ-MUR"}, {w:"RÜZ-GAR"}, {w:"GÜ-NEŞ"}, {w:"TOP-RAK"},
-             {w:"DE-RE"}, {w:"VA-Dİ"}, {w:"KAY-NAK"}, {w:"ÇA-KIL"}, {w:"KUM-LUK"}, {w:"KUM-SAL"}, {w:"TE-PE"}, {w:"BA-HAR"}, {w:"MEV-SİM"}, {w:"IR-MAK"},
-             {w:"KA-LEM"}, {w:"DEF-TER"}, {w:"SİL-Gİ"}, {w:"ÇAN-TA"}, {w:"MA-SA"}, {w:"TAB-LO"}, {w:"DO-LAP"}, {w:"KA-PAK"}, {w:"BAR-DAK"}, {w:"PER-DE"},
-             {w:"YAS-TIK"}, {w:"HA-LI"}, {w:"Kİ-LİT"}, {w:"MA-KAS"}, {w:"FE-NER"}, {w:"KU-TU"}, {w:"SE-PET"}, {w:"BA-VUL"}, {w:"DÜĞ-ME"}, {w:"AS-KI"},
-             {w:"O-YUN"}, {w:"MA-SAL"}, {w:"ŞAR-KI"}, {w:"RE-SİM"}, {w:"RENK-Lİ"}, {w:"KUK-LA"}, {w:"LE-GO"}, {w:"PAR-KUR"}, {w:"BA-LON"}, {w:"ZIP-ZIP"},
-             {w:"SEK-SEK"}, {w:"TAH-TA"}, {w:"ÇİZ-Gİ"}, {w:"OY-NAK"}, {w:"PUZ-ZLE"}, {w:"NE-ŞE"}, {w:"GÜL-ME"}, {w:"AL-KIŞ"}, {w:"KOS-TÜM"}, {w:"BO-YA"},
-             {w:"EL-MA"}, {w:"AR-MUT"}, {w:"Kİ-RAZ"}, {w:"PEK-MEZ"}, {w:"PEY-NİR"}, {w:"EK-MEK"}, {w:"YO-ĞURT"}, {w:"BÖ-REK"}, {w:"KA-ŞAR"}, {w:"Sİ-MİT"},
-             {w:"HEL-VA"}, {w:"Pİ-LAV"}, {w:"SAL-ÇA"}, {w:"ÇOR-BA"}, {w:"AY-RAN"}, {w:"Lİ-MON"}, {w:"MUZ-LU"}, {w:"ŞE-KER"}, {w:"PAS-TA"}, {w:"RE-ÇEL"}
+             {w:"MAY-MUN"}, {w:"TİL-Kİ"}, {w:"Sİ-NEK"}, {w:"E-ŞEK"}, {w:"KE-Çİ"}, {w:"KAP-LAN"}, {w:"HO-ROZ"}, {w:"YI-LAN"}, {w:"DE-VE"}, {w:"TİM-SAH"}
         ];
 
         const HECE_OKU_PAGES = [
-            ["an", "en", "in", "at", "et", "it", "al", "el", "il"], 
-            ["na", "ne", "ni", "ta", "te", "ti", "la", "le", "li"]  
+            ["an", "en", "in", "at", "et", "it", "al", "el", "il"],
+            ["na", "ne", "ni", "ta", "te", "ti", "la", "le", "li"]
         ];
 
-        const isContentSafe = (text) => !text ? true : !BANNED_WORDS.some(banned => text.toLowerCase().includes(banned));
-        
         const shuffleWord = (word) => {
             let chars = word.split('').map((char, index) => ({ id: index, char, isPlaced: false }));
             if (word.length > 1) {
@@ -283,7 +151,6 @@
             for (let v of vowels) {
                 if (v === originalVowel) continue; 
                 const newSyllable = (upperSyllable.substring(0, vowelIndex) + v + upperSyllable.substring(vowelIndex + 1)).toLocaleUpperCase('tr');
-                if (!isContentSafe(newSyllable)) continue; 
                 distractors.push(newSyllable);
                 if (distractors.length === 2) break; 
             }
@@ -336,7 +203,7 @@
         };
 
         const ReadingApp = () => {
-            const [view, setView] = React.useState('loading');
+            const [view, setView] = React.useState('menu');
             const [level, setLevel] = React.useState(0);
             const [words, setWords] = React.useState([]);
             const [currentIndex, setCurrentIndex] = React.useState(-1);
@@ -368,9 +235,6 @@
             const [shakeLeft, setShakeLeft] = React.useState(false);
             const [shakeRight, setShakeRight] = React.useState(false);
 
-            const [daysLeft, setDaysLeft] = React.useState(null);
-            const [expiryDateDisp, setExpiryDateDisp] = React.useState("");
-
             const [printData, setPrintData] = React.useState(null);
 
             const timerRef = React.useRef(null);
@@ -380,26 +244,20 @@
                 if (printData !== null) {
                     const timer = setTimeout(() => {
                         window.print();
-                        setTimeout(() => {
-                            setPrintData(null);
-                        }, 500);
+                        setTimeout(() => setPrintData(null), 500);
                     }, 500);
                     return () => clearTimeout(timer);
                 }
             }, [printData]);
 
-            const handlePrint = (levelToPrint, idx) => {
-                setPrintData({ level: levelToPrint, idx: idx });
+            const handlePrint = (levelToPrint, idx) => setPrintData({ level: levelToPrint, idx: idx });
+
+            const playSound = () => { 
+                if(audioRef.current) { 
+                    audioRef.current.currentTime = 0; 
+                    audioRef.current.play().catch(e=>{}); 
+                } 
             };
-
-            React.useEffect(() => {
-                const now = new Date();
-                let expiryDate = new Date(); expiryDate.setFullYear(expiryDate.getFullYear() + 1); 
-                setExpiryDateDisp(expiryDate.toLocaleDateString('tr-TR'));
-                setView('menu');
-            }, []);
-
-            const playSound = () => { if(audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play().catch(e=>{}); } };
 
             const loadContent = () => {
                 setIsPlaying(false); setCurrentIndex(-1); setLap(1); clearInterval(timerRef.current);
@@ -427,14 +285,22 @@
 
             const handleSyl1Click = (syl) => {
                 if (sylSuccess) return;
-                if (syl === sylData.syl1) { setSelectedSyl1(syl); if (selectedSyl2 === sylData.syl2) { setSylSuccess(true); playSound(); } } 
-                else { setShakeLeft(true); setTimeout(() => setShakeLeft(false), 500); }
+                if (syl === sylData.syl1) { 
+                    setSelectedSyl1(syl); 
+                    if (selectedSyl2 === sylData.syl2) { setSylSuccess(true); playSound(); } 
+                } else { 
+                    setShakeLeft(true); setTimeout(() => setShakeLeft(false), 500); 
+                }
             };
 
             const handleSyl2Click = (syl) => {
                 if (sylSuccess) return;
-                if (syl === sylData.syl2) { setSelectedSyl2(syl); if (selectedSyl1 === sylData.syl1) { setSylSuccess(true); playSound(); } } 
-                else { setShakeRight(true); setTimeout(() => setShakeRight(false), 500); }
+                if (syl === sylData.syl2) { 
+                    setSelectedSyl2(syl); 
+                    if (selectedSyl1 === sylData.syl1) { setSylSuccess(true); playSound(); } 
+                } else { 
+                    setShakeRight(true); setTimeout(() => setShakeRight(false), 500); 
+                }
             };
 
             const handlePoolClick = (charObj) => {
@@ -500,272 +366,222 @@
                 }
             }, [currentIndex]);
 
-            const handleExitApp = () => { if (window.confirm("Uygulamadan çıkmak istiyor musunuz?")) window.close(); };
             const toggleFocusMode = () => setIsFocusMode(!isFocusMode);
-
-            if (view === 'loading') return <div className="h-full flex items-center justify-center text-4xl text-slate-500 font-['TemelYazi']">Yükleniyor...</div>;
 
             return (
                 <React.Fragment>
-                {/* OYUN ANA EKRANI - YAZDIRMA ESNASINDA TAMAMEN GİZLENİR */}
-                <div className={`h-full flex-col items-center bg-[#FFFBEB] print-hide ${printData ? 'hidden' : 'flex'}`}>
-                    <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" preload="auto" />
+                <div className={`h-full flex-col items-center bg-[#FFFBEB] print-hide overflow-hidden ${printData ? 'hidden' : 'flex'}`}>
+                    <audio ref={audioRef} src="assets/ses.mp3" preload="auto" />
 
                     {/* MENÜ SAYFASI */}
                     {view === 'menu' && (
-                        <div className="flex-1 flex flex-col items-center justify-center w-full max-w-7xl p-8 animate-pop-up">
-                            <h1 className="text-7xl md:text-9xl font-normal text-[#FF8C42] mb-4 font-['TemelYazi'] tracking-wide drop-shadow-sm">OKUMATİK</h1>
-                            <p className="text-slate-500 text-3xl md:text-4xl mb-16 font-['TemelYazi'] font-normal">1. Sınıf Hızlı Okuma Asistanı</p>
+                        <div className="flex-1 overflow-y-auto w-full flex flex-col items-center p-4 md:p-8 animate-pop-up">
+                            <h1 className="text-5xl md:text-8xl font-normal text-[#FF8C42] mt-4 mb-2 tracking-wide drop-shadow-sm text-center">OKUMATİK</h1>
+                            <p className="text-slate-500 text-xl md:text-3xl mb-8 md:mb-12 font-normal text-center">1. Sınıf Hızlı Okuma Asistanı</p>
 
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-8 w-full max-w-6xl">
-                                {/* ÜST SIRA */}
-                                <button onClick={() => { setLevel(0); setView('activity'); }} className="bg-white p-8 rounded-[3rem] border-8 border-[#FF8C42] shadow-xl hover:scale-105 transition-transform flex flex-col items-center text-center gap-4 group">
-                                    <div className="bg-orange-100 p-6 rounded-full text-[#FF8C42]"><Icons.Eye size={64}/></div>
-                                    <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Göz Takibi</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Kasları geliştir</p></div>
+                            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-8 w-full max-w-5xl mb-8">
+                                <button onClick={() => { setLevel(0); setView('activity'); }} className="bg-white p-4 md:p-8 rounded-3xl md:rounded-[3rem] border-4 md:border-8 border-[#FF8C42] shadow-lg hover:scale-105 transition-transform flex flex-col items-center text-center gap-2 md:gap-4">
+                                    <div className="bg-orange-100 p-3 md:p-5 rounded-full text-[#FF8C42]"><Icons.Eye size={36}/></div>
+                                    <div><h3 className="text-xl md:text-3xl font-normal text-slate-700">Göz Takibi</h3><p className="hidden md:block text-slate-400">Kasları geliştir</p></div>
                                 </button>
                                 
-                                <button onClick={() => { setLevel(5); setView('activity'); }} className="bg-white p-8 rounded-[3rem] border-8 border-pink-400 shadow-xl hover:scale-105 transition-transform flex flex-col items-center text-center gap-4 group">
-                                    <div className="bg-pink-100 p-6 rounded-full text-pink-500"><Icons.Book size={64}/></div>
-                                    <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Hece Oku</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Hızlı hece takibi</p></div>
+                                <button onClick={() => { setLevel(5); setView('activity'); }} className="bg-white p-4 md:p-8 rounded-3xl md:rounded-[3rem] border-4 md:border-8 border-pink-400 shadow-lg hover:scale-105 transition-transform flex flex-col items-center text-center gap-2 md:gap-4">
+                                    <div className="bg-pink-100 p-3 md:p-5 rounded-full text-pink-500"><Icons.Book size={36}/></div>
+                                    <div><h3 className="text-xl md:text-3xl font-normal text-slate-700">Hece Oku</h3><p className="hidden md:block text-slate-400">Hızlı hece takibi</p></div>
                                 </button>
 
-                                <button onClick={() => { setLevel(4); setView('activity'); }} className="bg-white p-8 rounded-[3rem] border-8 border-purple-400 shadow-xl hover:scale-105 transition-transform flex flex-col items-center text-center gap-4 group">
-                                    <div className="bg-purple-100 p-6 rounded-full text-purple-500"><Icons.Syllable size={64}/></div>
-                                    <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Heceden Kelimeye</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Heceleri birleştir</p></div>
+                                <button onClick={() => { setLevel(4); setView('activity'); }} className="bg-white p-4 md:p-8 rounded-3xl md:rounded-[3rem] border-4 md:border-8 border-purple-400 shadow-lg hover:scale-105 transition-transform flex flex-col items-center text-center gap-2 md:gap-4">
+                                    <div className="bg-purple-100 p-3 md:p-5 rounded-full text-purple-500"><Icons.Syllable size={36}/></div>
+                                    <div><h3 className="text-xl md:text-3xl font-normal text-slate-700">Heceden Kelimeye</h3><p className="hidden md:block text-slate-400">Heceleri birleştir</p></div>
                                 </button>
 
-                                {/* ALT SIRA */}
-                                <button onClick={() => { setLevel(1); setView('activity'); }} className="bg-white p-8 rounded-[3rem] border-8 border-[#0ea5e9] shadow-xl hover:scale-105 transition-transform flex flex-col items-center text-center gap-4 group">
-                                    <div className="bg-sky-100 p-6 rounded-full text-[#0ea5e9]"><Icons.Type size={64}/></div>
-                                    <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Hızlı Oku</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Piramit okuma</p></div>
+                                <button onClick={() => { setLevel(1); setView('activity'); }} className="bg-white p-4 md:p-8 rounded-3xl md:rounded-[3rem] border-4 md:border-8 border-[#0ea5e9] shadow-lg hover:scale-105 transition-transform flex flex-col items-center text-center gap-2 md:gap-4">
+                                    <div className="bg-sky-100 p-3 md:p-5 rounded-full text-[#0ea5e9]"><Icons.Type size={36}/></div>
+                                    <div><h3 className="text-xl md:text-3xl font-normal text-slate-700">Hızlı Oku</h3><p className="hidden md:block text-slate-400">Piramit okuma</p></div>
                                 </button>
 
-                                <button onClick={() => { setLevel(2); setView('activity'); }} className="bg-white p-8 rounded-[3rem] border-8 border-[#10B981] shadow-xl hover:scale-105 transition-transform flex flex-col items-center text-center gap-4 group">
-                                    <div className="bg-emerald-100 p-6 rounded-full text-[#10B981]"><Icons.Align size={64}/></div>
-                                    <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Metin Oku</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Hikayeleri çalış</p></div>
+                                <button onClick={() => { setLevel(2); setView('activity'); }} className="bg-white p-4 md:p-8 rounded-3xl md:rounded-[3rem] border-4 md:border-8 border-[#10B981] shadow-lg hover:scale-105 transition-transform flex flex-col items-center text-center gap-2 md:gap-4">
+                                    <div className="bg-emerald-100 p-3 md:p-5 rounded-full text-[#10B981]"><Icons.Align size={36}/></div>
+                                    <div><h3 className="text-xl md:text-3xl font-normal text-slate-700">Metin Oku</h3><p className="hidden md:block text-slate-400">Hikayeleri çalış</p></div>
                                 </button>
 
-                                <button onClick={() => { setLevel(3); setView('activity'); }} className="bg-white p-8 rounded-[3rem] border-8 border-[#F59E0B] shadow-xl hover:scale-105 transition-transform flex flex-col items-center text-center gap-4 group">
-                                    <div className="bg-amber-100 p-6 rounded-full text-[#F59E0B]"><Icons.Puzzle size={64}/></div>
-                                    <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Kelime Bul</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Harfleri birleştir</p></div>
+                                <button onClick={() => { setLevel(3); setView('activity'); }} className="bg-white p-4 md:p-8 rounded-3xl md:rounded-[3rem] border-4 md:border-8 border-[#F59E0B] shadow-lg hover:scale-105 transition-transform flex flex-col items-center text-center gap-2 md:gap-4">
+                                    <div className="bg-amber-100 p-3 md:p-5 rounded-full text-[#F59E0B]"><Icons.Puzzle size={36}/></div>
+                                    <div><h3 className="text-xl md:text-3xl font-normal text-slate-700">Kelime Bul</h3><p className="hidden md:block text-slate-400">Harfleri birleştir</p></div>
                                 </button>
                             </div>
-
-                            <button onClick={handleExitApp} className="mt-20 bg-red-100 text-red-500 px-12 py-6 rounded-3xl font-normal hover:bg-red-200 transition flex items-center gap-4 border-4 border-red-200 text-3xl font-['TemelYazi']">
-                                <Icons.Power size={48} /> UYGULAMADAN ÇIK
-                            </button>
                         </div>
                     )}
 
                     {/* AKTİVİTE SAYFASI */}
                     {view === 'activity' && (
-                        <div className="w-full h-full flex flex-col relative">
-                            {/* ÜST BAR */}
-                            {(!isFocusMode || level !== 2) && level !== 4 && (
-                                <div className="bg-white shadow-xl p-4 md:p-6 flex justify-between items-center z-50 border-b-4 border-slate-200">
-                                    <div className="flex gap-4">
-                                        <button onClick={() => { setIsPlaying(false); setView('menu'); }} className="flex items-center gap-3 bg-slate-100 px-6 py-4 rounded-2xl font-normal text-slate-600 hover:bg-slate-200 text-2xl border-2 border-slate-300 font-['TemelYazi']">
-                                            <Icons.Home size={32} /> MENÜ
+                        <div className="w-full h-full flex flex-col relative overflow-hidden">
+                            {/* ÜST KONTROL BARI */}
+                            {(!isFocusMode || level !== 2) && (
+                                <div className="bg-white shadow-md p-2 md:p-4 flex flex-wrap justify-between items-center z-50 border-b-2 md:border-b-4 border-slate-200 gap-2">
+                                    <div className="flex items-center gap-2">
+                                        <button onClick={() => { setIsPlaying(false); setView('menu'); }} className="flex items-center gap-1 bg-slate-100 px-3 py-2 rounded-xl text-slate-700 text-lg md:text-xl border border-slate-300">
+                                            <Icons.Home size={20} /> <span className="hidden sm:inline">MENÜ</span>
                                         </button>
                                         
                                         {(level === 1 || level === 2) && (
-                                            <button onClick={() => handlePrint(level, level === 1 ? pyramidIndex : storyIndex)} className="flex items-center gap-3 bg-blue-100 px-6 py-4 rounded-2xl font-normal text-blue-600 hover:bg-blue-200 text-2xl border-2 border-blue-300 shadow-md transition-colors font-['TemelYazi']">
-                                                <Icons.Printer size={32} /> YAZDIR
+                                            <button onClick={() => handlePrint(level, level === 1 ? pyramidIndex : storyIndex)} className="flex items-center gap-1 bg-blue-100 px-3 py-2 rounded-xl text-blue-600 text-lg md:text-xl border border-blue-300">
+                                                <Icons.Printer size={20} /> <span className="hidden sm:inline">YAZDIR</span>
                                             </button>
                                         )}
                                         
                                         {level === 5 && (
-                                            <div className="flex gap-4 bg-slate-100 p-2 rounded-2xl border-2 border-slate-300">
-                                                <button onClick={() => { setHecePage(0); setIsPlaying(false); setCurrentIndex(-1); }} className={`px-6 py-2 rounded-xl font-normal transition-all text-xl font-['TemelYazi'] ${hecePage === 0 ? 'bg-pink-500 text-white shadow-md' : 'text-slate-500 hover:bg-white'}`}>1. Sayfa</button>
-                                                <button onClick={() => { setHecePage(1); setIsPlaying(false); setCurrentIndex(-1); }} className={`px-6 py-2 rounded-xl font-normal transition-all text-xl font-['TemelYazi'] ${hecePage === 1 ? 'bg-pink-500 text-white shadow-md' : 'text-slate-500 hover:bg-white'}`}>2. Sayfa</button>
+                                            <div className="flex bg-slate-100 p-1 rounded-xl border border-slate-300 gap-1">
+                                                <button onClick={() => { setHecePage(0); setIsPlaying(false); setCurrentIndex(-1); }} className={`px-2 py-1 rounded-lg text-sm md:text-lg ${hecePage === 0 ? 'bg-pink-500 text-white' : 'text-slate-600'}`}>1. Sayfa</button>
+                                                <button onClick={() => { setHecePage(1); setIsPlaying(false); setCurrentIndex(-1); }} className={`px-2 py-1 rounded-lg text-sm md:text-lg ${hecePage === 1 ? 'bg-pink-500 text-white' : 'text-slate-600'}`}>2. Sayfa</button>
                                             </div>
                                         )}
                                     </div>
 
-                                    <div className="flex items-center gap-6">
-                                        {level !== 2 && level !== 3 && (
-                                            <div className="flex items-center gap-4 bg-slate-100 px-6 py-3 rounded-2xl border-2 border-slate-300">
-                                                <span className="text-slate-500 text-xl font-normal font-['TemelYazi']">HIZ:</span>
+                                    <div className="flex items-center gap-2">
+                                        {level !== 2 && level !== 3 && level !== 4 && (
+                                            <div className="flex items-center gap-2 bg-slate-100 px-2 py-1 md:px-4 md:py-2 rounded-xl border border-slate-300">
+                                                <span className="text-slate-500 text-xs md:text-sm">HIZ:</span>
                                                 {level === 5 ? (
-                                                    <React.Fragment>
-                                                        <input type="range" min="2" max="5" step="1" value={heceSpeed} onChange={(e) => setHeceSpeed(Number(e.target.value))} className="w-40 md:w-64 horizontal-slider" style={{accentColor: '#ec4899'}} />
-                                                        <span className="text-slate-700 font-normal w-12 text-2xl text-center font-['TemelYazi']">{heceSpeed}s</span>
-                                                    </React.Fragment>
+                                                    <input type="range" min="2" max="5" step="1" value={heceSpeed} onChange={(e) => setHeceSpeed(Number(e.target.value))} className="w-16 md:w-32 horizontal-slider" style={{accentColor: '#ec4899'}} />
                                                 ) : (
-                                                    <React.Fragment>
-                                                        <input type="range" min="0.5" max="3" step="0.5" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-40 md:w-64 horizontal-slider" />
-                                                        <span className="text-slate-700 font-normal w-12 text-2xl text-center font-['TemelYazi']">{speed}s</span>
-                                                    </React.Fragment>
+                                                    <input type="range" min="0.5" max="3" step="0.5" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="w-16 md:w-32 horizontal-slider" />
                                                 )}
+                                                <span className="text-slate-700 text-xs md:text-sm w-6 text-center">{level === 5 ? heceSpeed : speed}s</span>
                                             </div>
                                         )}
                                         
                                         {level !== 5 && (
-                                            <button onClick={handleRefresh} className="bg-yellow-400 hover:bg-yellow-500 text-white p-4 rounded-2xl shadow-md transition active:scale-95 border-b-4 border-yellow-600">
-                                                <Icons.Refresh size={40} />
+                                            <button onClick={handleRefresh} className="bg-yellow-400 text-white p-2 rounded-xl border-b-2 border-yellow-600">
+                                                <Icons.Refresh size={22} />
                                             </button>
                                         )}
 
-                                        {level !== 3 && level !== 2 && (
-                                            <button onClick={() => setIsPlaying(!isPlaying)} className={`flex items-center gap-3 px-8 py-4 rounded-2xl font-normal text-white shadow-md transition active:scale-95 text-2xl border-b-4 font-['TemelYazi'] ${isPlaying ? 'bg-red-500 border-red-700' : 'bg-green-500 border-green-700'}`}>
-                                                {isPlaying ? <><Icons.Pause size={36}/> DUR</> : <><Icons.Play size={36}/> OKU</>}
+                                        {level !== 3 && level !== 2 && level !== 4 && (
+                                            <button onClick={() => setIsPlaying(!isPlaying)} className={`flex items-center gap-1 px-4 py-2 rounded-xl text-white text-base md:text-xl border-b-2 ${isPlaying ? 'bg-red-500 border-red-700' : 'bg-green-500 border-green-700'}`}>
+                                                {isPlaying ? <><Icons.Pause size={20}/> DUR</> : <><Icons.Play size={20}/> OKU</>}
                                             </button>
                                         )}
                                     </div>
-                                </div>
-                            )}
-
-                            {/* LEVEL 4 ÖZEL ÜST BAR */}
-                            {level === 4 && (
-                                <div className="flex justify-between p-6 z-50">
-                                    <button onClick={() => { setView('menu'); }} className="flex items-center gap-3 bg-white/80 px-6 py-4 rounded-2xl font-normal text-slate-600 hover:bg-white text-2xl border-4 border-slate-300 font-['TemelYazi']">
-                                        <Icons.Home size={32} /> MENÜ
-                                    </button>
-                                    <button onClick={handleRefresh} className="bg-yellow-400 hover:bg-yellow-500 text-white p-4 rounded-2xl shadow-md transition active:scale-95 border-b-4 border-yellow-600">
-                                        <Icons.Refresh size={40} />
-                                    </button>
                                 </div>
                             )}
 
                             {/* İÇERİK ALANI */}
-                            <div className="flex-1 overflow-hidden flex flex-col items-center justify-center p-4 relative w-full h-full">
+                            <div className="flex-1 overflow-y-auto flex flex-col items-center justify-center p-2 md:p-4 relative w-full h-full">
                                 
-                                {level < 3 && !isFocusMode && level !== 4 && (
-                                    <div className="absolute bottom-4 right-4 bg-white/80 backdrop-blur px-6 py-3 rounded-xl border-4 border-slate-300 text-slate-600 font-normal text-3xl font-['TemelYazi'] shadow-lg z-20">
-                                        Tur: {lap}/{maxLaps}
-                                    </div>
-                                )}
-
-                                {level === 0 ? (
-                                    /* LEVEL 0: GÖZ TAKİBİ */
+                                {level === 0 && (
                                     eyeMode === 'grid' ? (
-                                        <div className="grid grid-cols-5 gap-x-24 gap-y-20 m-auto max-w-[95%]">
+                                        <div className="grid grid-cols-5 gap-2 md:gap-8 m-auto max-w-full">
                                             {words.map((item) => (
-                                                <div key={item.id} id={`word-${item.id}`} className={`w-32 h-20 md:w-48 md:h-32 rounded-3xl border-8 transition-all duration-200 ${currentIndex === item.id ? 'bg-yellow-400 border-yellow-600 scale-125 shadow-2xl z-10' : 'bg-white border-slate-300'}`}></div>
+                                                <div key={item.id} id={`word-${item.id}`} className={`w-14 h-10 md:w-32 md:h-20 rounded-xl md:rounded-3xl border-2 md:border-4 transition-all ${currentIndex === item.id ? 'bg-yellow-400 border-yellow-600 scale-110 shadow-lg' : 'bg-white border-slate-300'}`}></div>
                                             ))}
                                         </div>
                                     ) : (
-                                        <div className="flex flex-col items-center justify-center gap-12 m-auto max-w-[95%]">
+                                        <div className="flex flex-col items-center justify-center gap-2 md:gap-6 m-auto">
                                             {[0, 1, 2, 3, 4].map(lineIdx => (
-                                                <div key={lineIdx} className="flex gap-16">
+                                                <div key={lineIdx} className="flex gap-2 md:gap-6">
                                                     {words.filter(w => w.lineIndex === lineIdx).map(item => (
-                                                        <div key={item.id} id={`word-${item.id}`} className={`w-32 h-20 md:w-48 md:h-32 rounded-full border-8 transition-all duration-200 ${currentIndex === item.id ? 'bg-yellow-400 border-yellow-600 scale-125 shadow-2xl z-10' : 'bg-white border-slate-300'}`}></div>
+                                                        <div key={item.id} id={`word-${item.id}`} className={`w-14 h-10 md:w-32 md:h-20 rounded-full border-2 md:border-4 transition-all ${currentIndex === item.id ? 'bg-yellow-400 border-yellow-600 scale-110 shadow-lg' : 'bg-white border-slate-300'}`}></div>
                                                     ))}
                                                 </div>
                                             ))}
                                         </div>
                                     )
-                                ) : level === 5 ? (
-                                    /* LEVEL 5: HECE OKU */
-                                    <div className="grid grid-cols-3 gap-16 md:gap-24 m-auto">
+                                )}
+
+                                {level === 5 && (
+                                    <div className="grid grid-cols-3 gap-3 md:gap-12 m-auto max-w-full">
                                         {words.map((item) => (
-                                            <div key={item.id} id={`word-${item.id}`} 
-                                                 className={`w-40 h-24 md:w-64 md:h-40 rounded-[2rem] border-[10px] flex items-center justify-center text-6xl md:text-8xl font-['TemelYazi'] font-normal transition-all duration-300 
-                                                 ${currentIndex === item.id ? 'bg-yellow-400 border-yellow-600 scale-125 shadow-2xl z-10 text-black' : 'bg-white border-black text-black'}`}>
+                                            <div key={item.id} id={`word-${item.id}`} className={`w-24 h-16 md:w-56 md:h-36 rounded-2xl md:rounded-3xl border-4 md:border-8 flex items-center justify-center text-4xl md:text-7xl font-normal transition-all ${currentIndex === item.id ? 'bg-yellow-400 border-yellow-600 scale-110 shadow-lg text-black' : 'bg-white border-black text-black'}`}>
                                                 {item.word}
                                             </div>
                                         ))}
                                     </div>
-                                ) : level === 1 ? (
-                                    /* LEVEL 1: PİRAMİT */
-                                    <div className="h-full flex flex-col justify-between w-full max-w-[95%] py-4 md:py-8">
+                                )}
+
+                                {level === 1 && (
+                                    <div className="h-full flex flex-col justify-center gap-2 md:gap-4 w-full max-w-4xl py-2">
                                         {[0,1,2,3,4,5,6].map(lineNum => (
-                                            <div key={lineNum} className="flex justify-center gap-6">
+                                            <div key={lineNum} className="flex flex-wrap justify-center gap-2 md:gap-4">
                                                 {words.filter(w => w.lineIndex === lineNum).map(item => (
-                                                    <div key={item.id} id={`word-${item.id}`} className={`text-6xl md:text-[5rem] font-['TemelYazi'] px-4 py-0 rounded-2xl transition-all duration-300 border-4 border-transparent leading-none ${currentIndex === item.id ? 'bg-yellow-300 border-yellow-500 scale-110 shadow-2xl text-black font-normal z-10' : 'text-slate-800 font-normal'}`}>
+                                                    <div key={item.id} id={`word-${item.id}`} className={`text-3xl sm:text-4xl md:text-6xl px-2 py-1 rounded-xl transition-all ${currentIndex === item.id ? 'bg-yellow-300 border-b-2 border-yellow-500 scale-105 shadow-md text-black' : 'text-slate-800'}`}>
                                                         {item.word}
                                                     </div>
                                                 ))}
                                             </div>
                                         ))}
                                     </div>
-                                ) : level === 2 ? (
-                                    /* LEVEL 2: HİKAYE - DİNAMİK TAM EKRAN FONT BOOTSTER */
-                                    <div className={`transition-all duration-500 bg-white shadow-2xl border-8 border-slate-200 mx-auto flex items-center justify-center relative ${isFocusMode ? 'fixed inset-0 z-[100] w-full h-full rounded-none border-0' : 'w-full max-w-[90%] max-h-[85vh] rounded-[3rem] p-8 md:p-12'}`}>
-                                        <button onClick={() => setIsPlaying(!isPlaying)} className={`absolute top-6 left-6 z-20 flex items-center gap-2 px-6 py-3 rounded-2xl font-normal text-white shadow-lg transition active:scale-95 text-xl border-b-4 ${isPlaying ? 'bg-red-500 border-red-700' : 'bg-green-500 border-green-700'} font-['TemelYazi']`}>
-                                            {isPlaying ? <><Icons.Pause size={32}/> DUR</> : <><Icons.Play size={32}/> OKU</>}
-                                        </button>
-                                        <button onClick={toggleFocusMode} className="absolute top-6 right-6 z-20 bg-blue-500 hover:bg-blue-600 text-white p-3 rounded-xl shadow-lg transition active:scale-95 border-b-4 border-blue-700">
-                                            {isFocusMode ? <Icons.Minimize size={32}/> : <Icons.Maximize size={32}/>}
-                                        </button>
-                                        <div className="absolute right-6 top-1/2 -translate-y-1/2 z-20 flex flex-col items-center gap-2 bg-slate-100 p-2 rounded-full border-2 border-slate-300 shadow-inner h-64 w-16 justify-center">
-                                            <div className="font-normal text-slate-500 text-sm font-['TemelYazi']">HIZ</div>
-                                            <div className="h-48 w-full flex items-center justify-center relative"><input type="range" min="0.5" max="3" step="0.5" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="vertical-slider" /></div>
-                                            <div className="font-normal text-slate-700 text-lg font-['TemelYazi']">{speed}s</div>
+                                )}
+
+                                {level === 2 && (
+                                    <div className={`transition-all duration-300 bg-white shadow-xl border-4 md:border-8 border-slate-200 mx-auto flex flex-col items-center justify-center relative p-4 md:p-10 ${isFocusMode ? 'fixed inset-0 z-[100] w-full h-full rounded-none border-0' : 'w-full max-w-4xl rounded-3xl'}`}>
+                                        <div className="w-full flex justify-between items-center mb-4">
+                                            <button onClick={() => setIsPlaying(!isPlaying)} className={`flex items-center gap-1 px-4 py-2 rounded-xl text-white text-sm md:text-lg border-b-2 ${isPlaying ? 'bg-red-500 border-red-700' : 'bg-green-500 border-green-700'}`}>
+                                                {isPlaying ? <><Icons.Pause size={18}/> DUR</> : <><Icons.Play size={18}/> OKU</>}
+                                            </button>
+                                            <button onClick={toggleFocusMode} className="bg-blue-500 text-white p-2 rounded-xl">
+                                                {isFocusMode ? <Icons.Minimize size={18}/> : <Icons.Maximize size={18}/>}
+                                            </button>
                                         </div>
-                                        <div className={`w-full text-center overflow-y-auto flex flex-col justify-center ${isFocusMode ? 'h-screen px-16 md:px-40 py-24' : 'max-h-[75vh] px-12'}`}>
+                                        <div className="w-full text-center overflow-y-auto max-h-[60vh] px-2 md:px-6">
                                             {(() => {
                                                 const lines = []; let currentLine = [];
                                                 words.forEach(word => { currentLine.push(word); if (word.isLastWord) { lines.push(currentLine); currentLine = []; } });
                                                 if(currentLine.length > 0) lines.push(currentLine);
                                                 return lines.map((lineWords, lineIdx) => (
-                                                    <div key={lineIdx} className={`text-balance leading-tight ${isFocusMode ? 'mb-12 text-[4rem] md:text-[6rem] lg:text-[7.5rem]' : 'mb-8 text-5xl md:text-[4rem]'}`}>
+                                                    <div key={lineIdx} className="mb-4 text-balance leading-relaxed text-2xl sm:text-3xl md:text-5xl">
                                                         {lineWords.map(item => (
-                                                            <span key={item.id} id={`word-${item.id}`} className={`inline-block font-['TemelYazi'] px-3 py-1 rounded-2xl transition-colors duration-200 border-4 border-transparent mx-1 font-normal ${currentIndex === item.id ? 'bg-yellow-300 border-yellow-500 text-black shadow-xl transform scale-105' : 'text-slate-900'}`}>{item.word}</span>
+                                                            <span key={item.id} id={`word-${item.id}`} className={`inline-block px-1.5 py-0.5 rounded-lg transition-colors mx-0.5 ${currentIndex === item.id ? 'bg-yellow-300 text-black shadow font-normal scale-105' : 'text-slate-800'}`}>{item.word}</span>
                                                         ))}
                                                     </div>
                                                 ));
                                             })()}
                                         </div>
                                     </div>
-                                ) : level === 3 ? (
-                                    /* LEVEL 3: PUZZLE */
-                                    <div className={`flex flex-col items-center justify-center h-full gap-20 w-full max-w-[90%] transition-transform ${puzzleShake ? 'animate-shake' : ''}`}>
-                                        <div className="flex flex-wrap justify-center gap-8">
+                                )}
+
+                                {level === 3 && (
+                                    <div className={`flex flex-col items-center justify-center gap-6 w-full max-w-2xl ${puzzleShake ? 'animate-shake' : ''}`}>
+                                        <div className="flex flex-wrap justify-center gap-2 md:gap-4">
                                             {puzzleShuffled.map(charObj => (
-                                                <div key={charObj.id} onClick={() => !charObj.isPlaced && handlePoolClick(charObj)} className={`w-32 h-32 md:w-40 md:h-40 rounded-[2rem] flex items-center justify-center text-7xl md:text-8xl font-normal font-['TemelYazi'] leading-none pb-2 cursor-pointer border-b-[12px] transition-all active:translate-y-2 active:border-b-0 ${charObj.isPlaced ? 'opacity-0 pointer-events-none' : 'bg-yellow-400 border-yellow-600 text-black shadow-2xl hover:bg-yellow-300'}`}>{charObj.char}</div>
+                                                <div key={charObj.id} onClick={() => !charObj.isPlaced && handlePoolClick(charObj)} className={`w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl md:text-6xl border-b-4 ${charObj.isPlaced ? 'opacity-0 pointer-events-none' : 'bg-yellow-400 border-yellow-600 text-black shadow-md'}`}>{charObj.char}</div>
                                             ))}
                                         </div>
-                                        <div className="flex flex-wrap justify-center gap-8 bg-white p-12 rounded-[4rem] border-[12px] border-slate-200 shadow-xl">
+                                        <div className="flex flex-wrap justify-center gap-2 md:gap-4 bg-white p-4 md:p-8 rounded-3xl border-4 md:border-8 border-slate-200 shadow-md">
                                             {puzzleSlots.map((charObj, idx) => (
-                                                <div key={idx} onClick={() => handleSlotClick(idx)} className={`w-32 h-32 md:w-40 md:h-40 rounded-[2rem] flex items-center justify-center text-7xl md:text-8xl font-normal font-['TemelYazi'] leading-none pb-2 cursor-pointer border-8 transition-all ${charObj ? (puzzleSuccess ? 'bg-green-500 border-green-600 text-white scale-110 shadow-2xl' : 'bg-white border-slate-300 text-black shadow-md') : 'bg-slate-50 border-slate-300'}`}>{charObj ? charObj.char : ''}</div>
+                                                <div key={idx} onClick={() => handleSlotClick(idx)} className={`w-14 h-14 sm:w-16 sm:h-16 md:w-24 md:h-24 rounded-2xl flex items-center justify-center text-3xl sm:text-4xl md:text-6xl border-2 md:border-4 ${charObj ? (puzzleSuccess ? 'bg-green-500 border-green-600 text-white' : 'bg-white border-slate-300 text-black') : 'bg-slate-50 border-slate-300'}`}>{charObj ? charObj.char : ''}</div>
                                             ))}
                                         </div>
-                                        {puzzleSuccess && <div className="text-[10rem] font-normal text-green-500 animate-pop-rotate drop-shadow-2xl font-['TemelYazi'] mt-8">HARİKA!</div>}
+                                        {puzzleSuccess && <div className="text-5xl md:text-8xl text-green-500 animate-pop-rotate font-normal">HARİKA!</div>}
                                     </div>
-                                ) : level === 4 ? (
-                                    /* LEVEL 4: HECEDEN KELİMEYE */
-                                    sylData && (
-                                        <div className="flex flex-col items-center justify-center h-full w-full max-w-[90%] gap-12">
-                                            <div className="flex justify-center items-center gap-12 w-full">
-                                                <div className="flex gap-6">
-                                                    {sylData.options1.map((s, i) => ( <button key={i} onClick={() => handleSyl1Click(s)} className={`w-56 h-36 rounded-[2rem] text-[5rem] font-['TemelYazi'] font-normal border-b-[10px] transition-all active:translate-y-2 active:border-b-0 shadow-xl ${selectedSyl1 === s ? 'bg-blue-500 text-white border-blue-700' : 'bg-blue-100 text-black border-blue-300 hover:bg-blue-200'}`}>{s}</button> ))}
-                                                </div>
-                                                <div className="w-2 h-48 bg-slate-300 rounded-full opacity-50"></div>
-                                                <div className="flex gap-6">
-                                                    {sylData.options2.map((s, i) => ( <button key={i} onClick={() => handleSyl2Click(s)} className={`w-56 h-36 rounded-[2rem] text-[5rem] font-['TemelYazi'] font-normal border-b-[10px] transition-all active:translate-y-2 active:border-b-0 shadow-xl ${selectedSyl2 === s ? 'bg-rose-500 text-white border-rose-700' : 'bg-rose-100 text-black border-rose-300 hover:bg-rose-200'}`}>{s}</button> ))}
-                                                </div>
+                                )}
+
+                                {level === 4 && sylData && (
+                                    <div className="flex flex-col items-center justify-center w-full max-w-xl gap-4">
+                                        <div className="flex justify-center items-center gap-3 w-full">
+                                            <div className="flex flex-col gap-2">
+                                                {sylData.options1.map((s, i) => ( <button key={i} onClick={() => handleSyl1Click(s)} className={`w-28 h-16 md:w-44 md:h-24 rounded-2xl text-2xl md:text-4xl border-b-4 shadow ${selectedSyl1 === s ? 'bg-blue-500 text-white border-blue-700' : 'bg-blue-100 text-black border-blue-300'}`}>{s}</button> ))}
                                             </div>
-                                            <div className="flex flex-col items-center gap-8 mt-8 w-full">
-                                                <div className="flex gap-8">
-                                                    <div className={`w-56 h-36 rounded-[2rem] border-8 flex items-center justify-center text-[5rem] font-['TemelYazi'] font-normal bg-white relative transition-all duration-300 ${shakeLeft ? 'animate-shake border-red-400' : (selectedSyl1 ? 'border-blue-500 text-black' : 'border-slate-200 text-slate-300')}`}>{selectedSyl1 || "?"}</div>
-                                                    <div className={`w-56 h-36 rounded-[2rem] border-8 flex items-center justify-center text-[5rem] font-['TemelYazi'] font-normal bg-white relative transition-all duration-300 ${shakeRight ? 'animate-shake border-red-400' : (selectedSyl2 ? 'border-rose-500 text-black' : 'border-slate-200 text-slate-300')}`}>{selectedSyl2 || "?"}</div>
-                                                </div>
-                                                <div className={`transition-all duration-500 flex items-center justify-center gap-8 mt-4 border-8 rounded-[3rem] px-20 py-8 shadow-2xl min-w-[60%] min-h-[180px] ${sylSuccess ? 'bg-green-400 border-green-600 animate-pop-up' : 'bg-slate-100 border-slate-200'}`}>
-                                                    {sylSuccess && <div className="text-white text-[11rem] font-normal font-['TemelYazi'] tracking-wider">{sylData.target}</div>}
-                                                </div>
+                                            <div className="w-1 h-32 bg-slate-300 rounded-full"></div>
+                                            <div className="flex flex-col gap-2">
+                                                {sylData.options2.map((s, i) => ( <button key={i} onClick={() => handleSyl2Click(s)} className={`w-28 h-16 md:w-44 md:h-24 rounded-2xl text-2xl md:text-4xl border-b-4 shadow ${selectedSyl2 === s ? 'bg-rose-500 text-white border-rose-700' : 'bg-rose-100 text-black border-rose-300'}`}>{s}</button> ))}
                                             </div>
                                         </div>
-                                    )
-                                ) : null}
+                                        <div className="flex gap-4 mt-2">
+                                            <div className={`w-24 h-16 md:w-36 md:h-24 rounded-2xl border-4 flex items-center justify-center text-2xl md:text-4xl bg-white ${shakeLeft ? 'animate-shake border-red-400' : (selectedSyl1 ? 'border-blue-500 text-black' : 'border-slate-200 text-slate-300')}`}>{selectedSyl1 || "?"}</div>
+                                            <div className={`w-24 h-16 md:w-36 md:h-24 rounded-2xl border-4 flex items-center justify-center text-2xl md:text-4xl bg-white ${shakeRight ? 'animate-shake border-red-400' : (selectedSyl2 ? 'border-rose-500 text-black' : 'border-slate-200 text-slate-300')}`}>{selectedSyl2 || "?"}</div>
+                                        </div>
+                                        <div className={`flex items-center justify-center rounded-2xl px-6 py-2 shadow-lg min-w-[200px] h-16 md:h-24 mt-2 ${sylSuccess ? 'bg-green-400 border-2 border-green-600 animate-pop-up' : 'bg-slate-100 border border-slate-200'}`}>
+                                            {sylSuccess && <div className="text-white text-4xl md:text-6xl tracking-wider">{sylData.target}</div>}
+                                        </div>
+                                    </div>
+                                )}
                             </div>
                         </div>
                     )}
-                    
-                    {/* MARKA İMZASI */}
-                    <div className="fixed bottom-4 left-4 z-[9999] pointer-events-none select-none opacity-40 hover:opacity-100 transition-opacity duration-500 flex flex-col items-start gap-1">
-                        <span className="text-slate-400 font-normal text-lg md:text-xl font-['TemelYazi'] tracking-widest drop-shadow-sm leading-none">
-                            Okulmatik<span className="text-slate-500 font-normal">Studio</span>
-                        </span>
-                        {expiryDateDisp && (
-                            <span className="text-slate-400 text-[10px] md:text-xs font-['TemelYazi'] leading-none pl-0.5">
-                                Lisans Bitiş: {expiryDateDisp}
-                            </span>
-                        )}
-                    </div>
                 </div>
 
-                {/* YAZDIRMA (PRINT) EKRANI */}
+                {/* YAZDIRMA ŞABLONU */}
                 {printData && (
                     <div className="print-show hidden bg-white text-black font-['TemelYazi']">
                         {printData.level === 1 ? (() => {
@@ -779,7 +595,7 @@
                                     </div>
                                     <div className="flex flex-col items-center justify-evenly flex-1 w-full py-10">
                                         {lines.map((line, i) => (
-                                            <div key={i} className="text-[5.5rem] leading-[1.5] text-black font-normal text-center w-full">{line.join(' ')}</div>
+                                            <div key={i} className="text-[4rem] leading-[1.5] text-black font-normal text-center w-full">{line.join(' ')}</div>
                                         ))}
                                     </div>
                                 </div>
@@ -795,7 +611,7 @@
                                     </div>
                                     <div className="flex flex-col flex-1 w-full justify-evenly pl-8">
                                         {sentences.map((sentence, i) => (
-                                            <div key={i} className="text-[4rem] leading-tight text-black font-normal w-full text-left">
+                                            <div key={i} className="text-[3.5rem] leading-tight text-black font-normal w-full text-left">
                                                 {sentence.trim() + (sentence.endsWith('.') ? '' : '.')}
                                             </div>
                                         ))}
