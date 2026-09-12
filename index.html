@@ -5,10 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>1. Sınıf Hızlı Okuma Asistanı</title>
     
-    <!-- ÇEVRİMİÇİ CDN BAĞLANTILARI (ÜRETİM SÜRÜMLERİ - MAKSİMUM HIZ) -->
+    <!-- ÇEVRİMİÇİ CDN BAĞLANTILARI -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
     <style>
@@ -41,10 +41,7 @@
         @keyframes popRotate { 0% { transform: scale(0) rotate(-180deg); opacity: 0; } 60% { transform: scale(1.2) rotate(10deg); opacity: 1; } 80% { transform: scale(0.9) rotate(-5deg); } 100% { transform: scale(1) rotate(0deg); } }
         .animate-pop-rotate { animation: popRotate 0.8s cubic-bezier(0.68, -0.55, 0.265, 1.55) forwards; }
 
-        /* Yatay Slider */
         input[type=range].horizontal-slider { accent-color: #FF8C42; height: 20px; width: 100%; cursor: pointer; }
-
-        /* Dikey Slider */
         input[type=range].vertical-slider {
             writing-mode: bt-lr; 
             -webkit-appearance: slider-vertical; 
@@ -54,7 +51,7 @@
             cursor: pointer;
         }
 
-        /* YAZDIRMA AYARLARI */
+        /* YAZDIRMA İÇİN KESİN ÇÖZÜM (A4 TAM SAYFA) */
         @media print {
             @page { size: A4 portrait; margin: 0; }
             html, body { 
@@ -84,6 +81,20 @@
     <div id="root" class="h-full w-full"></div>
 
     <script type="text/babel">
+        const CONTACT_INFO = "0555 555 55 55"; 
+        
+        const STORAGE_KEY_EXPIRY = "okulmatik_secure_exp_v2";
+        const STORAGE_KEY_LAST_RUN = "okulmatik_last_run";
+        const STORAGE_KEY_PUZZLE_INDEX = "okulmatik_puzzle_idx_v2"; 
+        const STORAGE_KEY_STORY_INDEX = "okulmatik_story_idx_v2";
+        const STORAGE_KEY_PYRAMID_INDEX = "okulmatik_pyramid_idx_v3";
+        const STORAGE_KEY_SYLLABLE_INDEX = "okulmatik_syllable_idx_v1";
+
+        const encrypt = (text) => { try { return btoa(text); } catch (e) { return ""; } };
+        const decrypt = (text) => { try { if (!text) return null; return atob(text); } catch(e) { return null; } };
+
+        const BANNED_WORDS = ["bok", "kaka", "popo", "salak", "aptal", "mal", "gerizekalı", "öldü", "öldürdü", "kan", "silah", "bomba", "öptü", "öpüşmek", "çıplak", "soyundu", "işedi", "sıçtı", "içki", "alkol", "sigara", "bira", "rakı", "sarhoş", "kumar", "meme", "bacak", "kalça", "yala", "em", "daya", "sok", "oy", "parti", "cehennem", "şeytan", "cin", "ilaç", "hap", "iğne", "şurup", "doktor", "hemşire", "hasta", "yaralı", "sik", "am", "yarrak", "kaşar"];
+
         const Icons = {
             Play: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><polygon points="5 3 19 12 5 21 5 3"></polygon></svg>,
             Pause: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="currentColor"><rect x="6" y="4" width="4" height="16"></rect><rect x="14" y="4" width="4" height="16"></rect></svg>,
@@ -93,11 +104,15 @@
             Type: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="4 7 4 4 20 4 20 7"></polyline><line x1="9" y1="20" x2="15" y2="20"></line><line x1="12" y1="4" x2="12" y2="20"></line></svg>,
             Align: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><line x1="17" y1="10" x2="3" y2="10"></line><line x1="21" y1="6" x2="3" y2="6"></line><line x1="21" y1="14" x2="3" y2="14"></line><line x1="17" y1="18" x2="3" y2="18"></line></svg>,
             Puzzle: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><rect x="3" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="3" width="7" height="7" rx="1"></rect><rect x="14" y="14" width="7" height="7" rx="1"></rect><rect x="3" y="14" width="7" height="7" rx="1"></rect></svg>,
+            Power: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M18.36 6.64a9 9 0 1 1-12.73 0"></path><line x1="12" y1="2" x2="12" y2="12"></line></svg>,
             Maximize: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7"/></svg>,
             Minimize: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 14h6v6M20 10h-6V4M14 10l7-7M3 21l7-7"/></svg>,
             Syllable: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><path d="M7 4v16M17 4v16M3 8h4M3 16h4M17 8h4M17 16h4M7 12h10"></path></svg>,
+            Check: ({ size = 48 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3"><polyline points="20 6 9 17 4 12"></polyline></svg>,
             Printer: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><polyline points="6 9 6 2 18 2 18 9"></polyline><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"></path><rect x="6" y="14" width="12" height="8"></rect></svg>,
-            Book: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"></path><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"></path></svg>
+            Book: ({ size = 36 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5v-15A2.5 2.5 0 0 1 6.5 2H20v20H6.5a2.5 2.5 0 0 1 0-5H20"></path></svg>,
+            Alert: ({ size = 64 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M10.29 3.86L1.82 18a2 2 0 0 0 1.71 3h16.94a2 2 0 0 0 1.71-3L13.71 3.86a2 2 0 0 0-3.42 0z"></path><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="17" x2="12.01" y2="17"></line></svg>,
+            Lock: ({ size = 64 }) => <svg width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect><path d="M7 11V7a5 5 0 0 1 10 0v4"></path></svg>
         };
 
         const PYRAMID_CONTENT = [
@@ -123,7 +138,77 @@
             "Dedem bize masal anlattı. Masalda kocaman devler vardı. Keloğlan aklını kullanarak devi yendi. Masalın sonunda çok güldük. Dedem en güzel masalları bilir.",
             "Yaz tatilinde denize gittik. Kumsalda büyük bir kale yaptık. Dalgalar kıyıya kadar geldi. Yaptığımız kaleyi yıktı ama biz yine yaptık.",
             "Kış geldi, hava soğudu. Lapa lapa kar yağdı. Her yer bembeyaz oldu. Bahçeye çıkıp kardan adam yaptık. Burnuna havuç taktık.",
-            "Sabah erkenden uyandım. Penceremi açıp güneşe baktım. Elimi yüzümü yıkadım. Sütümü içip kahvaltımı yaptım. Çantamı alıp okula koştum."
+            "Sabah erkenden uyandım. Penceremi açıp güneşe baktım. Elimi yüzümü yıkadım. Sütümü içip kahvaltımı yaptım. Çantamı alıp okula koştum.",
+            "Bahçeye küçük bir fidan diktik. Can suyunu verdik. Güneş açtı ve onu ısıttı. Fidanımız büyüyüp ağaç olacak. Bize meyveler verecek.",
+            "Annemle pazara gittik. Kırmızı elma ve sarı armut aldık. Eve gelince meyveleri yıkadık. Tabaklara koyup afiyetle yedik. Meyveler çok sağlıklı.",
+            "Beyaz tavşan havuç sever. Kırlarda zıp zıp zıplar. Kulakları çok uzundur. Tehlike görünce çok hızlı koşar. Yuvasına saklanıp bekler.",
+            "Gece oldu, hava karardı. Gökyüzünde yıldızlar parladı. Ay dede bize gülümsedi. Artık uyku vakti geldi. Pijamalarımızı giydik.",
+            "Yatmadan önce dişlerimi fırçaladım. Yumuşak pijamamı giydim. Yatağıma yatıp gözlerimi kapattım. Güzel rüyalar gördüm. Sabah dinç uyandım.",
+            "Kırmızı bir balonum var. İpinden sıkıca tuttum. Rüzgar aniden esti. Balon elimden uçtu gitti. Gökyüzünde küçücük kaldı.",
+            "Okulda hep beraber şarkı söyledik. Sırayla şiir okuduk. Teneffüste oyun oynadık. Okulu ve arkadaşlarımı çok severim. Okumak çok güzel.",
+            "Sevimli köpeğim Boncuk havladı. Beni görünce kuyruk salladı. Topu uzağa attım. Koşup hemen getirdi. Onunla oynamak çok eğlenceli.",
+            "Dışarıda şıp şıp yağmur yağdı. Renkli şemsiyemi açtım. Su birikintisine bastım. Ayakkabım biraz ıslandı. Yağmurda yürümeyi severim.",
+            "Küçük arı vız vız uçtu. Sarı çiçeğe kondu. Çiçekten bal yaptı. Bal çok tatlı ve şifalıdır. Arılar çok çalışkandır.",
+            "Trafik ışığı kırmızı yandı. Arabalar hemen durdu. Yayalara yeşil yandı. Annemle karşıya geçtik. Trafik kurallarına uymalıyız.",
+            "Kırmızı itfaiye arabası geldi. Yüksek sesle sirenleri çaldı. İtfaiyeciler hortumla yangını söndürdü. Herkes onları alkışladı. Onlar kahramandır.",
+            "Manavdan taze sebze aldık. Ispanak, pırasa ve havuç seçtik. Sebzeler çok yararlıdır. Güçlü olmak için hepsini yemeliyiz.",
+            "Trende uzun bir yolculuk yaptık. Tren çuf çuf diye ses çıkardı. Pencereden dışarı baktım. Ağaçlar ve evler hızla geçti.",
+            "Uçak gökyüzünde kuş gibi uçar. Bulutların üstüne kadar çıkar. Aşağıdaki evler karınca gibi görünür. Yolculuk çok keyiflidir.",
+            "Büyük gemiler denizde gider. Balıklar suda neşeyle yüzer. Martılar vapurun peşinden uçar. Deniz havası çok güzeldir.",
+            "Hafta sonu ormanda yürüyüş yaptık. Derin bir nefes aldık. Kuş seslerini dinledik. Doğayı korumalıyız. Yerlere çöp atmamalıyız.",
+            "Çiftlikte benekli inekler vardı. Çiftçi sütlerini sağdı. Taze ve ılık süt içtik. Süt içmek kemiklerimizi güçlendirir.",
+            "Kütüphaneye gidince sessiz oldum. Raftan resimli bir kitap seçtim. Sayfaları yavaşça çevirdim. Okumak yeni dünyalar keşfetmektir.",
+            "Bayramda dedemlerin elini öptük. Bize harçlık ve şeker verdiler. Hepimiz çok sevindik. Bayramlar bizi birleştirir.",
+            "Duvardaki saat tik tak çalışır. Bize zamanı gösterir. Okula geç kalmamalıyız. Zamanımızı iyi kullanmalıyız.",
+            "Evdeki telefon yüksek sesle çaldı. Babam telefonu açtı. Arayan uzaktaki dayımdı. Bize selam söyledi. Sesini duymak güzeldi.",
+            "Bilgisayarda ödevimi yaptım. Merak ettiğim konuları araştırdım. Yeni ve ilginç bilgiler öğrendim. Teknoloji hayatımızı kolaylaştırır.",
+            "Yağmurdan sonra gökkuşağı çıktı. Gökyüzünde yedi renk oluştu. Çok güzel görünüyordu. Herkes gökyüzüne baktı.",
+            "Minik karınca çok çalışkan. Yuvasına durmadan yemek taşır. Yazın çalışır kışın yer. Hiç yorulmak bilmez.",
+            "Kelebekler rengarenk olur. Çiçekten çiçeğe nazikçe konar. Kanatları çok narin ve güzeldir. Onları izlemek harikadır.",
+            "Ağaçlar bize temiz hava verir. Ormanları korumalıyız. Dalını kırmamalıyız. Herkes bir fidan dikmeli.",
+            "Çöpleri her zaman kutuya atalım. Yerlere çöp atmayalım. Çevremizi temiz tutalım. Temiz bir dünya hepimizin hakkı.",
+            "Arkadaşımla parkta oyun oynadım. Oyuncağımı onunla paylaştım. Paylaşmak çok güzeldir. Birlikte oynamak daha eğlenceli.",
+            "Geçen gün biraz hasta oldum. Doktora gidip muayene oldum. İlaçlarımı içince iyileştim. Sağlığımıza dikkat etmeliyiz.",
+            "Polis amca trafiği yönetir. Bizi tehlikelerden korur. Ona her zaman güveniriz. Polisler güvenliğimiz için çalışır.",
+            "Fırıncı sabah erkenden ekmek yapar. Sıcak ekmek kokusu sokağa yayıldı. Kahvaltıda taze ekmek yedik. Çıtır çıtır çok lezzetliydi.",
+            "Terzi elbisemi özenle dikti. Kopan düğmesini taktı. Elbise tam üstüme göre oldu. Yeni kıyafetimi çok beğendim.",
+            "Berber uzayan saçımı kesti. Aynaya bakıp gülümsedim. Çok yakışıklı oldum. Saçlarımız temiz ve taralı olmalı.",
+            "Çoban koyunları çayıra götürdü. Kavalını neşeyle çaldı. Koyunlar meledi ve ot yedi. Akşam olunca ağıla döndüler.",
+            "Tavuklar kümeste gıdakladı. Taze yumurta yaptılar. Kümesten yumurtaları topladık. Kahvaltıda haşlayıp yedik.",
+            "Eşek sırtında yük taşıdı. Yokuşu yavaşça çıktı. Çok yoruldu ve terledi. Gölgede biraz dinlendi.",
+            "Leylekler sonbaharda göç etti. Sıcak ülkelere gittiler. Bahar gelince geri dönecekler. Yuvalarını tekrar yapacaklar.",
+            "Kaplumbağa evini sırtında taşır. Çok yavaş yürür. Tehlike görünce kabuğuna saklanır. Orada kendini güvende hisseder.",
+            "Zürafanın boyu çok uzundur. Ağacın en yüksek yaprağını yer. Vücudunda benekleri vardır. Çok sevimli bir hayvandır.",
+            "Filin uzun bir hortumu var. Hortumuyla su içer. Bazen hortumuyla kendine su püskürtür. Serinlemeyi çok sever.",
+            "Aslan ormanların güçlü kralıdır. Yelesi çok gürdür. Kükreyince herkes sesini duyar. Çok güçlü ve cesurdur.",
+            "Maymun daldan dala atlar. Muz yemeyi çok sever. Hareketleri çok komiktir. Bizi hep güldürür.",
+            "Sincap ormanda ceviz toplar. Ağaç kovuğuna saklar. Kışın acıkınca yer. Kuyruğu çok tüylüdür.",
+            "Kirpi dikenli bir hayvandır. Dikenleri kimseye batmaz. Kendini korumak için top gibi olur. Çok ilginçtir.",
+            "Baykuş gece uyanık olur. Gözleri karanlıkta çok iyi görür. Hu hu diye öter. Bilge bir kuş gibidir.",
+            "Yarasa karanlık mağarada yaşar. Tavana asılıp baş aşağı uyur. Gece olunca uçar ve avlanır.",
+            "Örümcek incecik ağ örer. Böcekleri ağıyla yakalar. Ağı çok sağlamdır. Çok yetenekli bir mimardır.",
+            "Sinek vızıldayarak uçar. Yemeğe konmaya çalışır. Onu el sallayarak kovalarız. Temizliğe dikkat etmeliyiz.",
+            "Sivrisinek kolumu ısırdı. Kolum biraz kaşındı. Hemen ilaç sürdüm. Pencerelere tel takmalıyız.",
+            "Karadeniz çok dalgalı olur. Yaylaları yemyeşildir. Çay ve fındık orada yetişir. Havası çok temizdir.",
+            "Ankara bizim başkentimizdir. Anıtkabir Ankara'dadır. Atatürk orada yatmaktadır. Onu saygıyla anıyoruz.",
+            "İstanbul çok kalabalık bir şehirdir. Boğaz köprüsü vardır. Vapurla denizde gezdik. Martılara simit attık.",
+            "İzmir'de ünlü saat kulesi var. Denizi ve sahili çok güzel. Orada boyoz yedik. Kordon'da yürüyüş yaptık.",
+            "Antalya yazın çok sıcak olur. Denize girip serinledik. Portakal bahçelerini gezdik. Tatil için harika bir yer.",
+            "Erzurum kışın çok soğuk olur. Lapa lapa kar yağar. Palandöken'de kayak yaptık. Cağ kebabı yedik.",
+            "Konya dümdüz bir ovadadır. Mevlana müzesi oradadır. Meşhur etli ekmek yedik. Çok lezzetliydi.",
+            "Van gölü deniz gibi büyüktür. İçinde canavar yoktur. Van kedisi çok meşhurdur. Gözleri farklı renktedir.",
+            "Trabzon'da bol bol hamsi yedik. Horon tepenleri izledik. Biz de onlara katıldık. Çok eğlendik.",
+            "Çanakkale geçilmez destanı yazıldı. Şehitlerimizi saygıyla andık. Abideyi ziyaret ettik. Duygusal anlar yaşadık.",
+            "23 Nisan çocuk bayramıdır. Okulda şiir okudum. Halk oyunları oynadık. Atatürk bu bayramı bize hediye etti.",
+            "19 Mayıs gençlik ve spor bayramıdır. Stadyumda spor yaptık. Koştuk ve eğlendik. Sağlıklı olmak için spor yapmalıyız.",
+            "29 Ekim Cumhuriyet bayramıdır. Okula bayraklar astık. Hep bir ağızdan marş söyledik. Cumhuriyet özgürlüktür.",
+            "30 Ağustos zafer bayramıdır. Askerler törende yürüdü. Onları izlerken gurur duyduk. Vatanımızı çok seviyoruz.",
+            "Öğretmenler günü geldi. Öğretmenime çiçek verdim. O bizim için çok çalışıyor. Öğretmenim hediyeye çok sevindi.",
+            "Anneler günü kutlu olsun. Annemi çok severim. O benim en değerli varlığım. Ona kocaman sarıldım.",
+            "Babalar günü geldi. Babama güzel bir hediye aldım. Ona sevgimi gösterdim. Babam evin direğidir.",
+            "Yerli malı haftası kutladık. Okula meyve ve kuruyemiş getirdik. Arkadaşlarla paylaşıp yedik. Yerli malı kullanmalıyız.",
+            "Kızılay zor zamanlarda yardım eder. İhtiyacı olanlara kan veririz. Kan vermek hayat kurtarır. İyilik yapmak güzeldir.",
+            "Yeşilay bizi zararlı şeylerden korur. Sağlıklı yaşamayı öğretir. Spor yapıp dengeli beslenmeliyiz. Sağlık en büyük hazinedir."
         ];
 
         const PUZZLE_WORDS = [
@@ -133,20 +218,42 @@
             "BABA", "ANNE", "DEDE", "NİNE", "DAYI", "HALA", "AMCA", "ABLA", "PARK", "OYUN", 
             "DANS", "SPOR", "KOŞU", "KAPI", "ÇATI", "BACA", "ODUN", "SOBA", "MONT", "ATKI", 
             "BERE", "ETEK", "TREN", "GEMİ", "UÇAK", "SAAT", "HAVA", "DOĞA", "BOYA", "LALE",
-            "ZEBRA", "GEYİK", "TİLKİ", "PANDA", "KOALA", "TURNA", "SERÇE", "KARGA", "ŞAHİN", "HOROZ"
+            "ZEBRA", "GEYİK", "TİLKİ", "PANDA", "KOALA", "TURNA", "SERÇE", "KARGA", "ŞAHİN", "HOROZ", 
+            "TAVUK", "ÖRDEK", "HİNDİ", "BALIK", "KÖPEK", "ASLAN", "YILAN", "SİNEK", "BÖCEK", "EKMEK", 
+            "SİMİT", "ÇORBA", "PİLAV", "HELVA", "REÇEL", "SALÇA", "CEVİZ", "BADEM", "ARMUT", "KAVUN", 
+            "LİMON", "ÇİLEK", "KİRAZ", "VİŞNE", "BİBER", "SOĞAN", "MARUL", "MISIR", "AYRAN", "KİTAP", 
+            "SİLGİ", "ÇANTA", "KALEM", "KAĞIT", "DOSYA", "MAKET", "PROJE", "BİLGİ", "SINIF", "NÖBET", 
+            "KAŞIK", "ÇATAL", "TABAK", "SEHPA", "YATAK", "DOLAP", "PERDE", "HALI", "KİLİM", "LAMBA", 
+            "FENER", "SAKSI", "ÇİÇEK", "BANYO", "HAVLU", "SABUN", "TARAK", "CEKET", "HIRKA", "KAZAK",
+            "TİMSAH", "KAPLAN", "ZÜRAFA", "MAYMUN", "SİNCAP", "KARTAL", "BAYKUŞ", "LEYLEK", "BÜLBÜL", "BALİNA", 
+            "CİVCİV", "PEYNİR", "ZEYTİN", "YOĞURT", "KARPUZ", "KAYISI", "LEBLEB", "MANTAR", "ŞEFTAL", "ANANAS", 
+            "DEFTER", "CETVEL", "SÖZLÜK", "BAYRAK", "BARDAK", "SÜRAHİ", "YASTIK", "YORGAN", "KOLTUK", "KANEPE", 
+            "MİNDER", "TERLİK", "GÖMLEK", "ELBİSE", "OTOBÜS", "KAMYON", "DOLMUŞ", "RÜZGAR", "YAĞMUR", "ŞİMŞEK", "YAPRAK", "TOPRAK",
+            "KELEBEK", "KARINCA", "ÇEKİRGE", "AHTAPOT", "PENGUEN", "PELİKAN", "FLAMİNGO", "PORTAKAL", "MANDALİ", "DOMATES", 
+            "PATATES", "PATLICAN", "ISPANAK", "BROKOLİ", "ÇİKOLATA", "DONDURMA", "KURABİYE", "TEBEŞİR", "KALEMLİK", "PENCERE", 
+            "MERDİVEN", "SANDALYE", "TELEFON", "BİSİKLET", "TRAKTÖR", "MİNİBÜS", "PAPATYA", "KARANFİL", "GÜVERCİN", "KESTANE"
         ];
 
         const SYLLABLE_WORDS = [
              {w:"KE-Dİ"}, {w:"KÖ-PEK"}, {w:"TA-VUK"}, {w:"KU-ZU"}, {w:"CİV-CİV"}, {w:"BA-LIK"}, {w:"ÖR-DEK"}, {w:"AS-LAN"}, {w:"PAN-DA"}, {w:"ZEB-RA"}, 
              {w:"MAY-MUN"}, {w:"TİL-Kİ"}, {w:"Sİ-NEK"}, {w:"E-ŞEK"}, {w:"KE-Çİ"}, {w:"KAP-LAN"}, {w:"HO-ROZ"}, {w:"YI-LAN"}, {w:"DE-VE"}, {w:"TİM-SAH"},
-             {w:"OR-MAN"}, {w:"Çİ-MEN"}, {w:"Çİ-ÇEK"}, {w:"DE-NİZ"}, {w:"GÖL-GE"}, {w:"BU-LUT"}, {w:"YAĞ-MUR"}, {w:"RÜZ-GAR"}, {w:"GÜ-NEŞ"}, {w:"TOP-RAK"}
+             {w:"OR-MAN"}, {w:"Çİ-MEN"}, {w:"Çİ-ÇEK"}, {w:"DE-NİZ"}, {w:"GÖL-GE"}, {w:"BU-LUT"}, {w:"YAĞ-MUR"}, {w:"RÜZ-GAR"}, {w:"GÜ-NEŞ"}, {w:"TOP-RAK"},
+             {w:"DE-RE"}, {w:"VA-Dİ"}, {w:"KAY-NAK"}, {w:"ÇA-KIL"}, {w:"KUM-LUK"}, {w:"KUM-SAL"}, {w:"TE-PE"}, {w:"BA-HAR"}, {w:"MEV-SİM"}, {w:"IR-MAK"},
+             {w:"KA-LEM"}, {w:"DEF-TER"}, {w:"SİL-Gİ"}, {w:"ÇAN-TA"}, {w:"MA-SA"}, {w:"TAB-LO"}, {w:"DO-LAP"}, {w:"KA-PAK"}, {w:"BAR-DAK"}, {w:"PER-DE"},
+             {w:"YAS-TIK"}, {w:"HA-LI"}, {w:"Kİ-LİT"}, {w:"MA-KAS"}, {w:"FE-NER"}, {w:"KU-TU"}, {w:"SE-PET"}, {w:"BA-VUL"}, {w:"DÜĞ-ME"}, {w:"AS-KI"},
+             {w:"O-YUN"}, {w:"MA-SAL"}, {w:"ŞAR-KI"}, {w:"RE-SİM"}, {w:"RENK-Lİ"}, {w:"KUK-LA"}, {w:"LE-GO"}, {w:"PAR-KUR"}, {w:"BA-LON"}, {w:"ZIP-ZIP"},
+             {w:"SEK-SEK"}, {w:"TAH-TA"}, {w:"ÇİZ-Gİ"}, {w:"OY-NAK"}, {w:"PUZ-ZLE"}, {w:"NE-ŞE"}, {w:"GÜL-ME"}, {w:"AL-KIŞ"}, {w:"KOS-TÜM"}, {w:"BO-YA"},
+             {w:"EL-MA"}, {w:"AR-MUT"}, {w:"Kİ-RAZ"}, {w:"PEK-MEZ"}, {w:"PEY-NİR"}, {w:"EK-MEK"}, {w:"YO-ĞURT"}, {w:"BÖ-REK"}, {w:"KA-ŞAR"}, {w:"Sİ-MİT"},
+             {w:"HEL-VA"}, {w:"Pİ-LAV"}, {w:"SAL-ÇA"}, {w:"ÇOR-BA"}, {w:"AY-RAN"}, {w:"Lİ-MON"}, {w:"MUZ-LU"}, {w:"ŞE-KER"}, {w:"PAS-TA"}, {w:"RE-ÇEL"}
         ];
 
         const HECE_OKU_PAGES = [
-            ["an", "en", "in", "at", "et", "it", "al", "el", "il"],
-            ["na", "ne", "ni", "ta", "te", "ti", "la", "le", "li"]
+            ["an", "en", "in", "at", "et", "it", "al", "el", "il"], 
+            ["na", "ne", "ni", "ta", "te", "ti", "la", "le", "li"]  
         ];
 
+        const isContentSafe = (text) => !text ? true : !BANNED_WORDS.some(banned => text.toLowerCase().includes(banned));
+        
         const shuffleWord = (word) => {
             let chars = word.split('').map((char, index) => ({ id: index, char, isPlaced: false }));
             if (word.length > 1) {
@@ -176,6 +283,7 @@
             for (let v of vowels) {
                 if (v === originalVowel) continue; 
                 const newSyllable = (upperSyllable.substring(0, vowelIndex) + v + upperSyllable.substring(vowelIndex + 1)).toLocaleUpperCase('tr');
+                if (!isContentSafe(newSyllable)) continue; 
                 distractors.push(newSyllable);
                 if (distractors.length === 2) break; 
             }
@@ -228,7 +336,7 @@
         };
 
         const ReadingApp = () => {
-            const [view, setView] = React.useState('menu');
+            const [view, setView] = React.useState('loading');
             const [level, setLevel] = React.useState(0);
             const [words, setWords] = React.useState([]);
             const [currentIndex, setCurrentIndex] = React.useState(-1);
@@ -260,6 +368,9 @@
             const [shakeLeft, setShakeLeft] = React.useState(false);
             const [shakeRight, setShakeRight] = React.useState(false);
 
+            const [daysLeft, setDaysLeft] = React.useState(null);
+            const [expiryDateDisp, setExpiryDateDisp] = React.useState("");
+
             const [printData, setPrintData] = React.useState(null);
 
             const timerRef = React.useRef(null);
@@ -281,12 +392,14 @@
                 setPrintData({ level: levelToPrint, idx: idx });
             };
 
-            const playSound = () => { 
-                if(audioRef.current) { 
-                    audioRef.current.currentTime = 0; 
-                    audioRef.current.play().catch(e=>{}); 
-                } 
-            };
+            React.useEffect(() => {
+                const now = new Date();
+                let expiryDate = new Date(); expiryDate.setFullYear(expiryDate.getFullYear() + 1); 
+                setExpiryDateDisp(expiryDate.toLocaleDateString('tr-TR'));
+                setView('menu');
+            }, []);
+
+            const playSound = () => { if(audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play().catch(e=>{}); } };
 
             const loadContent = () => {
                 setIsPlaying(false); setCurrentIndex(-1); setLap(1); clearInterval(timerRef.current);
@@ -314,22 +427,14 @@
 
             const handleSyl1Click = (syl) => {
                 if (sylSuccess) return;
-                if (syl === sylData.syl1) { 
-                    setSelectedSyl1(syl); 
-                    if (selectedSyl2 === sylData.syl2) { setSylSuccess(true); playSound(); } 
-                } else { 
-                    setShakeLeft(true); setTimeout(() => setShakeLeft(false), 500); 
-                }
+                if (syl === sylData.syl1) { setSelectedSyl1(syl); if (selectedSyl2 === sylData.syl2) { setSylSuccess(true); playSound(); } } 
+                else { setShakeLeft(true); setTimeout(() => setShakeLeft(false), 500); }
             };
 
             const handleSyl2Click = (syl) => {
                 if (sylSuccess) return;
-                if (syl === sylData.syl2) { 
-                    setSelectedSyl2(syl); 
-                    if (selectedSyl1 === sylData.syl1) { setSylSuccess(true); playSound(); } 
-                } else { 
-                    setShakeRight(true); setTimeout(() => setShakeRight(false), 500); 
-                }
+                if (syl === sylData.syl2) { setSelectedSyl2(syl); if (selectedSyl1 === sylData.syl1) { setSylSuccess(true); playSound(); } } 
+                else { setShakeRight(true); setTimeout(() => setShakeRight(false), 500); }
             };
 
             const handlePoolClick = (charObj) => {
@@ -395,15 +500,16 @@
                 }
             }, [currentIndex]);
 
+            const handleExitApp = () => { if (window.confirm("Uygulamadan çıkmak istiyor musunuz?")) window.close(); };
             const toggleFocusMode = () => setIsFocusMode(!isFocusMode);
+
+            if (view === 'loading') return <div className="h-full flex items-center justify-center text-4xl text-slate-500 font-['TemelYazi']">Yükleniyor...</div>;
 
             return (
                 <React.Fragment>
-                {/* OYUN ANA EKRANI */}
+                {/* OYUN ANA EKRANI - YAZDIRMA ESNASINDA TAMAMEN GİZLENİR */}
                 <div className={`h-full flex-col items-center bg-[#FFFBEB] print-hide ${printData ? 'hidden' : 'flex'}`}>
-                    
-                    {/* Yerel Ses Dosyası */}
-                    <audio ref={audioRef} src="assets/ses.mp3" preload="auto" />
+                    <audio ref={audioRef} src="https://assets.mixkit.co/active_storage/sfx/2013/2013-preview.mp3" preload="auto" />
 
                     {/* MENÜ SAYFASI */}
                     {view === 'menu' && (
@@ -444,6 +550,10 @@
                                     <div><h3 className="text-3xl font-normal text-slate-700 font-['TemelYazi']">Kelime Bul</h3><p className="text-lg text-slate-400 font-['TemelYazi']">Harfleri birleştir</p></div>
                                 </button>
                             </div>
+
+                            <button onClick={handleExitApp} className="mt-20 bg-red-100 text-red-500 px-12 py-6 rounded-3xl font-normal hover:bg-red-200 transition flex items-center gap-4 border-4 border-red-200 text-3xl font-['TemelYazi']">
+                                <Icons.Power size={48} /> UYGULAMADAN ÇIK
+                            </button>
                         </div>
                     )}
 
@@ -527,6 +637,7 @@
                                 )}
 
                                 {level === 0 ? (
+                                    /* LEVEL 0: GÖZ TAKİBİ */
                                     eyeMode === 'grid' ? (
                                         <div className="grid grid-cols-5 gap-x-24 gap-y-20 m-auto max-w-[95%]">
                                             {words.map((item) => (
@@ -545,6 +656,7 @@
                                         </div>
                                     )
                                 ) : level === 5 ? (
+                                    /* LEVEL 5: HECE OKU */
                                     <div className="grid grid-cols-3 gap-16 md:gap-24 m-auto">
                                         {words.map((item) => (
                                             <div key={item.id} id={`word-${item.id}`} 
@@ -555,6 +667,7 @@
                                         ))}
                                     </div>
                                 ) : level === 1 ? (
+                                    /* LEVEL 1: PİRAMİT */
                                     <div className="h-full flex flex-col justify-between w-full max-w-[95%] py-4 md:py-8">
                                         {[0,1,2,3,4,5,6].map(lineNum => (
                                             <div key={lineNum} className="flex justify-center gap-6">
@@ -567,6 +680,7 @@
                                         ))}
                                     </div>
                                 ) : level === 2 ? (
+                                    /* LEVEL 2: HİKAYE - DİNAMİK TAM EKRAN FONT BOOTSTER */
                                     <div className={`transition-all duration-500 bg-white shadow-2xl border-8 border-slate-200 mx-auto flex items-center justify-center relative ${isFocusMode ? 'fixed inset-0 z-[100] w-full h-full rounded-none border-0' : 'w-full max-w-[90%] max-h-[85vh] rounded-[3rem] p-8 md:p-12'}`}>
                                         <button onClick={() => setIsPlaying(!isPlaying)} className={`absolute top-6 left-6 z-20 flex items-center gap-2 px-6 py-3 rounded-2xl font-normal text-white shadow-lg transition active:scale-95 text-xl border-b-4 ${isPlaying ? 'bg-red-500 border-red-700' : 'bg-green-500 border-green-700'} font-['TemelYazi']`}>
                                             {isPlaying ? <><Icons.Pause size={32}/> DUR</> : <><Icons.Play size={32}/> OKU</>}
@@ -579,13 +693,13 @@
                                             <div className="h-48 w-full flex items-center justify-center relative"><input type="range" min="0.5" max="3" step="0.5" value={speed} onChange={(e) => setSpeed(Number(e.target.value))} className="vertical-slider" /></div>
                                             <div className="font-normal text-slate-700 text-lg font-['TemelYazi']">{speed}s</div>
                                         </div>
-                                        <div className="w-full text-center overflow-y-auto max-h-[75vh] px-12">
+                                        <div className={`w-full text-center overflow-y-auto flex flex-col justify-center ${isFocusMode ? 'h-screen px-16 md:px-40 py-24' : 'max-h-[75vh] px-12'}`}>
                                             {(() => {
                                                 const lines = []; let currentLine = [];
                                                 words.forEach(word => { currentLine.push(word); if (word.isLastWord) { lines.push(currentLine); currentLine = []; } });
                                                 if(currentLine.length > 0) lines.push(currentLine);
                                                 return lines.map((lineWords, lineIdx) => (
-                                                    <div key={lineIdx} className="mb-8 text-balance leading-tight text-5xl md:text-[4rem]">
+                                                    <div key={lineIdx} className={`text-balance leading-tight ${isFocusMode ? 'mb-12 text-[4rem] md:text-[6rem] lg:text-[7.5rem]' : 'mb-8 text-5xl md:text-[4rem]'}`}>
                                                         {lineWords.map(item => (
                                                             <span key={item.id} id={`word-${item.id}`} className={`inline-block font-['TemelYazi'] px-3 py-1 rounded-2xl transition-colors duration-200 border-4 border-transparent mx-1 font-normal ${currentIndex === item.id ? 'bg-yellow-300 border-yellow-500 text-black shadow-xl transform scale-105' : 'text-slate-900'}`}>{item.word}</span>
                                                         ))}
@@ -595,6 +709,7 @@
                                         </div>
                                     </div>
                                 ) : level === 3 ? (
+                                    /* LEVEL 3: PUZZLE */
                                     <div className={`flex flex-col items-center justify-center h-full gap-20 w-full max-w-[90%] transition-transform ${puzzleShake ? 'animate-shake' : ''}`}>
                                         <div className="flex flex-wrap justify-center gap-8">
                                             {puzzleShuffled.map(charObj => (
@@ -609,6 +724,7 @@
                                         {puzzleSuccess && <div className="text-[10rem] font-normal text-green-500 animate-pop-rotate drop-shadow-2xl font-['TemelYazi'] mt-8">HARİKA!</div>}
                                     </div>
                                 ) : level === 4 ? (
+                                    /* LEVEL 4: HECEDEN KELİMEYE */
                                     sylData && (
                                         <div className="flex flex-col items-center justify-center h-full w-full max-w-[90%] gap-12">
                                             <div className="flex justify-center items-center gap-12 w-full">
@@ -641,10 +757,15 @@
                         <span className="text-slate-400 font-normal text-lg md:text-xl font-['TemelYazi'] tracking-widest drop-shadow-sm leading-none">
                             Okulmatik<span className="text-slate-500 font-normal">Studio</span>
                         </span>
+                        {expiryDateDisp && (
+                            <span className="text-slate-400 text-[10px] md:text-xs font-['TemelYazi'] leading-none pl-0.5">
+                                Lisans Bitiş: {expiryDateDisp}
+                            </span>
+                        )}
                     </div>
                 </div>
 
-                {/* YAZDIRMA ŞABLONU */}
+                {/* YAZDIRMA (PRINT) EKRANI */}
                 {printData && (
                     <div className="print-show hidden bg-white text-black font-['TemelYazi']">
                         {printData.level === 1 ? (() => {
