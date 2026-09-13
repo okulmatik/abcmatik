@@ -176,7 +176,7 @@
                 sentences.forEach((sentence, lineIdx) => {
                     const wordsInSentence = sentence.trim().split(/\s+/);
                     wordsInSentence.forEach(word => {
-                        flatWords.push({ id: idCounter++, word: word, lineIndex: lineIdx, isLastWord: false });
+                        flatWords.push({ id: idCounter++, word: word + (word.endsWith('.') ? '' : ''), lineIndex: lineIdx, isLastWord: false });
                     });
                     if (flatWords.length > 0) flatWords[flatWords.length - 1].isLastWord = true;
                     if (flatWords.length > 0 && !flatWords[flatWords.length - 1].word.endsWith('.')) flatWords[flatWords.length - 1].word += '.';
@@ -479,7 +479,7 @@
                                     </div>
                                 )}
 
-                                {/* LEVEL 1: HIZLI OKU (PİRAMİT) - MOBİLDE ASLA TAŞMAZ, YAN YANA KALIR VE EKRANA TAM OTURUR */}
+                                {/* LEVEL 1: HIZLI OKU (PİRAMİT) */}
                                 {level === 1 && (
                                     <div className="h-full w-full max-w-5xl flex flex-col justify-evenly items-center py-2 px-1">
                                         {[0,1,2,3,4,5,6].map(lineNum => (
@@ -494,7 +494,7 @@
                                     </div>
                                 )}
 
-                                {/* LEVEL 2: METİN OKU - KUTUSUZ, TÜM EKRANA FERAHÇA YAYILAN TAM GÖRÜNÜM */}
+                                {/* LEVEL 2: METİN OKU */}
                                 {level === 2 && (
                                     <div className="h-full w-full max-w-5xl flex flex-col justify-evenly items-center text-center py-4 px-3 sm:px-6">
                                         {(() => {
@@ -528,23 +528,56 @@
                                     </div>
                                 )}
 
+                                {/* LEVEL 4: HECEDEN KELİMEYE (3'ERLİ YAN YANA, BÜYÜK BOYUT, NET SİYAH ÇİZGİ) */}
                                 {level === 4 && sylData && (
-                                    <div className="flex flex-col items-center justify-center w-full max-w-xl gap-4">
-                                        <div className="flex justify-center items-center gap-3 w-full">
-                                            <div className="flex flex-col gap-2">
-                                                {sylData.options1.map((s, i) => ( <button key={i} onClick={() => handleSyl1Click(s)} className={`w-28 h-16 md:w-44 md:h-24 rounded-2xl text-2xl md:text-4xl border-b-4 shadow ${selectedSyl1 === s ? 'bg-blue-500 text-white border-blue-700' : 'bg-blue-100 text-black border-blue-300'}`}>{s}</button> ))}
+                                    <div className="flex flex-col items-center justify-center h-full w-full max-w-6xl gap-6 md:gap-10 py-2">
+                                        {/* ÜST PANEL: SOL 3 HECE - SİYAH ÇİZGİ - SAĞ 3 HECE */}
+                                        <div className="flex justify-center items-center gap-4 sm:gap-6 md:gap-10 w-full">
+                                            {/* SOL HECELER (3'LÜ YAN YANA) */}
+                                            <div className="flex flex-wrap sm:flex-nowrap justify-center gap-2 sm:gap-4 md:gap-6">
+                                                {sylData.options1.map((s, i) => (
+                                                    <button 
+                                                        key={i} 
+                                                        onClick={() => handleSyl1Click(s)} 
+                                                        className={`w-20 h-16 sm:w-32 sm:h-24 md:w-48 md:h-32 rounded-2xl md:rounded-3xl text-3xl sm:text-5xl md:text-6xl font-normal border-b-4 md:border-b-8 transition-all active:translate-y-1 shadow-lg ${selectedSyl1 === s ? 'bg-blue-500 text-white border-blue-700 scale-105' : 'bg-blue-100 text-black border-blue-300 hover:bg-blue-200'}`}
+                                                    >
+                                                        {s}
+                                                    </button>
+                                                ))}
                                             </div>
-                                            <div className="w-1 h-32 bg-slate-300 rounded-full"></div>
-                                            <div className="flex flex-col gap-2">
-                                                {sylData.options2.map((s, i) => ( <button key={i} onClick={() => handleSyl2Click(s)} className={`w-28 h-16 md:w-44 md:h-24 rounded-2xl text-2xl md:text-4xl border-b-4 shadow ${selectedSyl2 === s ? 'bg-rose-500 text-white border-rose-700' : 'bg-rose-100 text-black border-rose-300'}`}>{s}</button> ))}
+
+                                            {/* DİK SİYAH AYIRICI ÇİZGİ */}
+                                            <div className="w-1.5 md:w-2 h-20 sm:h-28 md:h-36 bg-black rounded-full shrink-0"></div>
+
+                                            {/* SAĞ HECELER (3'LÜ YAN YANA) */}
+                                            <div className="flex flex-wrap sm:flex-nowrap justify-center gap-2 sm:gap-4 md:gap-6">
+                                                {sylData.options2.map((s, i) => (
+                                                    <button 
+                                                        key={i} 
+                                                        onClick={() => handleSyl2Click(s)} 
+                                                        className={`w-20 h-16 sm:w-32 sm:h-24 md:w-48 md:h-32 rounded-2xl md:rounded-3xl text-3xl sm:text-5xl md:text-6xl font-normal border-b-4 md:border-b-8 transition-all active:translate-y-1 shadow-lg ${selectedSyl2 === s ? 'bg-rose-500 text-white border-rose-700 scale-105' : 'bg-rose-100 text-black border-rose-300 hover:bg-rose-200'}`}
+                                                    >
+                                                        {s}
+                                                    </button>
+                                                ))}
                                             </div>
                                         </div>
-                                        <div className="flex gap-4 mt-2">
-                                            <div className={`w-24 h-16 md:w-36 md:h-24 rounded-2xl border-4 flex items-center justify-center text-2xl md:text-4xl bg-white ${shakeLeft ? 'animate-shake border-red-400' : (selectedSyl1 ? 'border-blue-500 text-black' : 'border-slate-200 text-slate-300')}`}>{selectedSyl1 || "?"}</div>
-                                            <div className={`w-24 h-16 md:w-36 md:h-24 rounded-2xl border-4 flex items-center justify-center text-2xl md:text-4xl bg-white ${shakeRight ? 'animate-shake border-red-400' : (selectedSyl2 ? 'border-rose-500 text-black' : 'border-slate-200 text-slate-300')}`}>{selectedSyl2 || "?"}</div>
-                                        </div>
-                                        <div className={`flex items-center justify-center rounded-2xl px-6 py-2 shadow-lg min-w-[200px] h-16 md:h-24 mt-2 ${sylSuccess ? 'bg-green-400 border-2 border-green-600 animate-pop-up' : 'bg-slate-100 border border-slate-200'}`}>
-                                            {sylSuccess && <div className="text-white text-4xl md:text-6xl tracking-wider">{sylData.target}</div>}
+
+                                        {/* ALT BİRLEŞTİRME KUTULARI VE SONUÇ ALANI */}
+                                        <div className="flex flex-col items-center gap-4 md:gap-6 mt-2 md:mt-4 w-full">
+                                            <div className="flex gap-4 sm:gap-6 md:gap-8">
+                                                <div className={`w-28 h-20 sm:w-36 sm:h-24 md:w-52 md:h-32 rounded-2xl md:rounded-3xl border-4 md:border-8 flex items-center justify-center text-4xl sm:text-5xl md:text-7xl font-normal bg-white transition-all ${shakeLeft ? 'animate-shake border-red-400' : (selectedSyl1 ? 'border-blue-500 text-black shadow-md' : 'border-slate-300 text-slate-300')}`}>
+                                                    {selectedSyl1 || "?"}
+                                                </div>
+                                                <div className={`w-28 h-20 sm:w-36 sm:h-24 md:w-52 md:h-32 rounded-2xl md:rounded-3xl border-4 md:border-8 flex items-center justify-center text-4xl sm:text-5xl md:text-7xl font-normal bg-white transition-all ${shakeRight ? 'animate-shake border-red-400' : (selectedSyl2 ? 'border-rose-500 text-black shadow-md' : 'border-slate-300 text-slate-300')}`}>
+                                                    {selectedSyl2 || "?"}
+                                                </div>
+                                            </div>
+
+                                            {/* BAŞARI KUTUSU */}
+                                            <div className={`transition-all duration-300 flex items-center justify-center rounded-2xl md:rounded-3xl px-8 py-3 md:px-16 md:py-6 shadow-xl min-w-[240px] md:min-w-[420px] min-h-[70px] md:min-h-[110px] ${sylSuccess ? 'bg-green-400 border-4 md:border-6 border-green-600 animate-pop-up' : 'bg-slate-100 border-2 md:border-4 border-slate-200'}`}>
+                                                {sylSuccess && <div className="text-white text-5xl sm:text-6xl md:text-8xl font-normal tracking-wider drop-shadow-sm">{sylData.target}</div>}
+                                            </div>
                                         </div>
                                     </div>
                                 )}
